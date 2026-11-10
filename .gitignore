@@ -1,0 +1,29 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# render output
+/out
+*.mp4
+*.webm
+!site/public/**/*.mp4
+!site/public/**/*.webm
+
+# golden test scratch (actual/diff images written on failure)
+/tests/golden/**/*.actual.png
+/tests/golden/**/*.diff.png
+
+# site
+node_modules
+site/dist
+site/.astro
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+
+# claude code local state
+.claude/settings.local.json
