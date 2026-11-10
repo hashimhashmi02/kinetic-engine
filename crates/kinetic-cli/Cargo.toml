@@ -1,0 +1,17 @@
+[package]
+name = "kinetic-cli"
+description = "Command line entry point: preview, render, new."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+
+[[bin]]
+name = "kinetic"
+path = "src/main.rs"

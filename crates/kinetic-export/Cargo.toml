@@ -1,0 +1,13 @@
+[package]
+name = "kinetic-export"
+description = "Offscreen frame rendering piped to ffmpeg."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
