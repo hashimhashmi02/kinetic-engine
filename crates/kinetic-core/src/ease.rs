@@ -33,8 +33,9 @@ pub fn out_back(u: f64) -> f64 {
     const C1: f64 = 1.701_58;
     const C3: f64 = C1 + 1.0;
     let u = u.clamp(0.0, 1.0);
-    if u == 1.0 {
-        return 1.0;
+    // The polynomial misses the endpoints by a rounding error, so pin them.
+    if u == 0.0 || u == 1.0 {
+        return u;
     }
     let v = u - 1.0;
     1.0 + C3 * v * v * v + C1 * v * v
