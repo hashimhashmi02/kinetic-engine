@@ -7,10 +7,10 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Cargo workspace with seven crate stubs
 - [x] Licenses, README, line-ending rules
 - [x] `CLAUDE.md` and `docs/`
-- [ ] `.claude/` settings, hooks, skills, agents
-- [ ] CI: fmt, clippy, test on push
-- [ ] Setup scripts (plugins, tool checks)
-- [ ] CI green on GitHub
+- [x] `.claude/` settings, hooks, skills, agents
+- [x] CI: fmt, clippy, test on push
+- [x] Setup scripts (plugins, tool checks)
+- [x] CI green on GitHub
 
 ## M1 — First pixels (`v0.1.0`)
 
