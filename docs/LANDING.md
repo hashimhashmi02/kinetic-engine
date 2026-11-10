@@ -1,78 +1,90 @@
-# Landing page: "Kin learns to move"
+# Landing page: "Kin in Purani Dilli"
 
-The page is a short film you scroll through. One character, one story, seven chapters. Each chapter demonstrates one engine feature by having the character discover it.
+The page is a scroll-driven 3D journey. The camera travels one continuous route through a stylised Old Delhi, from the mouth of Chandni Chowk, down Nai Sarak into Chawri Bazar, and up the steps to Jama Masjid. Kin, the character, makes the trip with us, and each stretch of street shows one thing the engine does.
+
+Reference for the feel: a scroll fly-through site where every section is a place the camera moves into, with a single caption near the bottom of the screen and almost no other UI. Ours differs in having one connected world instead of separate scenes, and a character who carries the story.
 
 ## Principles
 
-- **Scroll is the playhead.** The page behaves like Kinetic's timeline: scrolling scrubs, scrolling back rewinds, nothing is a one-shot trigger that cannot be reversed.
-- **The character carries the story.** No floating abstract shapes for decoration. Every object on screen is something Kin touches, pushes, rides or reacts to.
-- **Show the code that made the motion.** Each chapter pairs the action with the three or four lines of Kinetic that would produce it.
-- **Quiet page, loud character.** Paper-like background, one ink colour, one accent. The motion is the decoration.
+- **Scroll is the playhead.** Scroll position maps to a time `t` on one master timeline. Camera, character, light and props are all functions of `t`, so scrolling back rewinds everything exactly. This is the engine's central idea, shown by the page itself.
+- **One place, one route, one character.** No floating abstract shapes. Everything on screen belongs to the street: shutters, rickshaws, wires, signboards, brass pots, paper, pigeons, kites.
+- **The street demonstrates the feature.** A spring is a hanging signboard that bounces. A morph is brass being beaten into a new shape. Text morphing is a painted signboard changing script.
+- **Little UI.** A wordmark, one button, a caption block low on the screen, and the timeline bar. The world does the rest.
+- **Affection and accuracy.** This is a real neighbourhood. Get the character of the place right (see "Getting the place right") and keep it warm, never a caricature.
+- **Built to become a portfolio.** Shopfronts along the route are slots. Later, each can hold a project: the camera stops, the shutter rolls up, the work is inside.
 
 ## Kin
 
-A small figure drawn in a single confident ink line: round head, bean body, noodle limbs, two dot eyes. No mouth; emotion comes from eyes, posture and timing.
+A small stylised figure: round head, bean body, simple limbs, two dot eyes, one accent-coloured scarf. Built from a handful of low-poly meshes and rigged with a few bones, or with plain transform hierarchies if that reads well enough. Emotion comes from posture, timing and the eyes.
 
-Rig (inline SVG, one `<g>` per part, transform origins at joints):
+Kin's actions are clips and procedural poses blended by the master timeline: `idle`, `notice`, `walk`, `pedal`, `hop`, `reach`, `duck`, `carry`, `look-up`, `sit`, `wave`. Scarf and arms get follow-through from a lagged secondary motion that is itself a function of `t` (computed from position at `t - dt`), so it stays scrubbable.
 
-```
-kin
-  shadow
-  body            squash/stretch on scaleX/scaleY, origin at feet
-    leg-l, leg-r  each a 2-segment path, IK-ish via pose presets
-    arm-l, arm-r
-    head
-      eye-l, eye-r   scaleY for blink, translate for look-at
-      brow-l, brow-r (appear only for surprise / effort)
-  accent          scarf: the one coloured element, trails with a lag
-```
+Animation principles to honour: anticipation, squash and stretch on hops and landings, follow-through on the scarf, arcs, eyes lead the head and the head leads the body, holds so poses read.
 
-Poses are plain objects of part transforms (`idle`, `notice`, `push`, `crouch`, `jump`, `land`, `juggle`, `reach`, `pull`, `cheer`). `poseTo(name, opts)` returns a GSAP timeline, so poses compose into chapter timelines. Limb paths morph between pose shapes by interpolating point lists with matching point counts.
+## The route
 
-Always-on idle layer, independent of scroll: breathing, blink every few seconds, scarf sway, eyes following the pointer within a small radius.
+| # | Place | Time of day | What happens | Engine idea | Code shown |
+|---|---|---|---|---|---|
+| 1 | **Mouth of Chandni Chowk** | Before dawn, blue haze | Wide establishing shot down the empty street: shutters down, wires overhead, the far end lost in mist. Kin stands frozen mid-step like a paused frame. Caption invites the scroll. On first scroll Kin blinks and looks at us. | Scene and nodes | `s.add(...)` |
+| 2 | **Chandni Chowk** | Sunrise, warm side light | Kin climbs onto a cycle rickshaw and pedals. The ride eases in and out; ghost frames of the rickshaw show the spacing. Shutters roll up one after another as we pass (stagger). Chai steam, a paratha stall, the first crowd silhouettes. | Tween, easing, stagger | `s.play(rick.move_to(..), 2.0, ease::in_out_cubic)` |
+| 3 | **Under the wires** | Morning | The camera tilts up into the canopy of cables, hanging signboards, lanterns and bunting. Kin hops off; everything they brush past swings and settles. A signboard has two dials (stiffness, damping) the visitor can turn; its bounce and a plotted response curve update live. Kites tug on their strings above. | Closed-form springs | `spring().stiffness(k).damping(c)` |
+| 4 | **Nai Sarak into Chawri Bazar** | Midday, the lane narrows | Brass and copper shops. A craftsman's hammer falls and a brass disc becomes a lota, then a bell, then a lamp. Kin carries a stack of vessels that reshape in their arms. Light glints travel across the metal. | Path morphing | `shape.morph_to(...)` |
+| 5 | **Chawri Bazar paper market** | Afternoon, dusty gold | Wedding cards, paper reams, hand-painted signboards. A painter's board morphs "नमस्ते" to "آداب" to "Hello"; loose letters blow off a stall and Kin catches them into a word. | Text as paths, shaping | `title.text_to("Hello")` |
+| 6 | **Steps of Jama Masjid** | Golden hour to dusk | The lane opens onto the wide steps and the sky. Pigeons lift off in a flock; scrolling back lands every bird where it started. Kin notices the timeline bar, sits on a step and drags the playhead: the sun moves, shadows swing, the flock reverses. The visitor can drag too. | Every frame is a pure function of `t` | `timeline.evaluate(t)` |
+| 7 | **Dusk over the old city** | Blue hour, lamps on | The camera rises to see the domes and minarets in silhouette against the sky, kites and strings of lights over the rooftops. The view letterboxes into a film frame; a render bar fills; it becomes a finished clip. Kin waves. Call to action. | Export | `kinetic render scene -o film.mp4` |
 
-Animation principles to honour: anticipation before every big move, squash and stretch on impacts, follow-through on the scarf, arcs not straight lines, slow in and out.
+After the journey: a plain, fast section with the install command, a quickstart snippet, the feature list and links. Footer.
 
-## Structure
+Later (portfolio phase): chapters 2 to 5 gain named shopfronts. Each is a stop with a title painted on its signboard; entering one opens a project view. The route, camera system and timeline bar do not change.
 
-A fixed stage holds Kin. Chapters are tall scroll sections; each owns a GSAP timeline scrubbed by ScrollTrigger. Copy and code sit beside the stage and change per chapter.
+## Getting the place right
 
-A timeline bar is fixed to the bottom: a track with seven chapter markers, keyframe diamonds, and a playhead whose position is scroll progress. Clicking a marker scrolls to that chapter.
+Collect photo references for each stretch before modelling, and keep them in `site/reference/` (not shipped). Things that make it read as Old Delhi and not a generic bazaar:
 
-| # | Chapter | What happens | Engine idea | Code shown |
-|---|---|---|---|---|
-| 1 | Still | Blank paper. A pencil line draws Kin. Kin is frozen, then blinks and looks at the visitor. Headline writes on. | Scene and nodes | `s.add(...)` |
-| 2 | First tween | A keyframe diamond drops in. Kin pokes it, gets carried from A to B on an eased slide, looks back amazed. Ghost frames show the easing spacing. | Tween and easing | `s.play(kin.move_to(..), 0.6, ease::out_cubic)` |
-| 3 | Springs | Kin finds a coil, steps on it, launches, overshoots, settles. Two sliders (stiffness, damping) let the visitor retune the jump; a live curve plots the closed-form response. | Springs | `spring().stiffness(k).damping(c)` |
-| 4 | Morph | Kin tosses a circle; mid-air it becomes a square, then a star. Kin catches the star and rides it across like a board. | Path morphing | `shape.morph_to(Star::new(5))` |
-| 5 | Text | Letters of "Hello" rain down. Kin dodges, stacks them, shoves the stack and the glyphs flow into "World". | Text as paths | `title.text_to("World")` |
-| 6 | Timeline | Kin notices the bar at the bottom, climbs down, grabs the playhead and drags it. The whole earlier scene replays backwards and forwards in a small inset. The visitor can drag it too. | Pure function of t | `timeline.evaluate(t)` |
-| 7 | Export | Kin snaps a clapperboard. Frames peel off into a film strip that rolls into an MP4 card. Kin bows. Call to action. | Export | `kinetic render scene -o film.mp4` |
+- Dense overhead cable tangles strung between poles and balconies.
+- Narrow multi-storey buildings with projecting balconies, jharokhas, carved brackets, peeling paint, rolling steel shutters, and layers of signboards in Devanagari, Urdu and English.
+- Cycle rickshaws, handcarts, sacks and crates stacked at shop edges, awnings and tarpaulins.
+- Chawri Bazar specifically: brass, copper and paper trade, wedding card shops.
+- Jama Masjid: red sandstone and white marble, three domes with black stripes, two tall minarets, the broad flight of steps.
 
-After the story: a compact section with install command, quickstart snippet, feature list, and links to GitHub and docs. Footer.
+Jama Masjid is a working place of worship. Show its exterior, steps and skyline with care. No jokes at its expense, no characters climbing on it, nothing inside the prayer hall. Kin sits quietly on the public steps. Signboard text in Hindi and Urdu must be real, correctly shaped words reviewed by a reader of each script; the user should confirm these before launch.
 
 ## Visual direction
 
-- Background: warm off-white paper with faint grain. Dark theme: deep ink blue-black with chalk-white line.
-- Ink: near-black. Accent: one saturated colour used for the scarf, keyframes, playhead and links.
-- Type: one characterful display face for headlines, one clean mono for code, one readable sans for body. Self-hosted, subset.
-- Line quality: consistent stroke width, round caps and joins, slight hand wobble via path variation (not filters).
+- Stylised low-poly with soft gradients and fog, not photoreal. Depth comes from haze, light direction and layered silhouettes.
+- Light is the colour script: blue pre-dawn, peach sunrise, white noon, gold afternoon, amber dusk, deep blue night with warm lamps. Sky, fog colour and sun angle are tracks on the master timeline.
+- Captions: small eyebrow label, one or two lines of body text, low centre, with a soft shadow for legibility over any scene.
+- Type: one display face with character for the wordmark and chapter names, a clean sans for captions, a mono for code. Self-hosted and subset, including the Devanagari and Arabic-script glyphs used on signboards if rendered as live text.
 - Decide exact tokens with the `impeccable` and `frontend-design` skills at build time and record them in `site/src/styles/tokens.css`.
 
-## Technical notes
+## Technical approach
 
-- Astro, static output, no client framework. One TypeScript module per chapter exporting `build(stage): gsap.core.Timeline`.
-- GSAP core + ScrollTrigger. Animate only `transform` and `opacity`; path morphs set `d` on a handful of small paths.
-- `prefers-reduced-motion`: no scrubbing or pinning. Each chapter shows a still illustration of its key pose with the same copy and code.
-- Small screens: stage on top, copy below, shorter timelines, no pinning where it hurts scroll feel.
-- Keyboard: chapter markers are buttons; sliders are native inputs; focus is visible.
-- Budget: under 150 KB JS gzipped, no layout shift, 60 fps on a mid-range laptop.
+- **Astro** static site. **Three.js** for the world, **GSAP + ScrollTrigger** for mapping scroll to master time and for DOM captions.
+- **Master timeline.** `site/src/world/timeline.ts` defines chapters with start and end times. Everything animated exposes `update(t)`. No per-frame state that depends on the previous frame, except explicitly lagged values computed from `t - dt`.
+- **Camera rail.** A Catmull-Rom spline for position and a second for the look-at target, with per-chapter easing so the camera slows at stops. Small pointer parallax is added on top and does not affect `t`.
+- **World building.** Modular kit: a few building modules, shutters, balconies, signboards, poles, awnings, stalls, combined procedurally along the route with a seeded random generator. Instanced meshes for repeats. Cables are catenary curves generated between anchor points. Hero pieces (rickshaw, the mosque, Kin) are modelled individually, as glTF with Draco compression or built in code.
+- **Streaming.** Only the stretch near the camera is in the scene graph; chapters ahead load during the current one. First paint needs only chapter 1.
+- **Lighting.** One directional sun, hemisphere light, fog. Lamps as emissive materials with a bloom pass after dusk. Shadows baked into vertex colours or a single cascaded shadow map on capable devices.
+- **Springs on the page** use the same closed-form solution as the engine (ported to TypeScript from `kinetic-core`), so the interactive signboard is an honest demo.
+- **Fallbacks.** No WebGL, low-power devices, or `prefers-reduced-motion`: a sequence of pre-rendered stills of each chapter with the same captions and code, no pinning or scrubbing. Phones get a lighter world (fewer instances, no post-processing, lower pixel ratio) and shorter scroll distance.
+- **Accessibility.** Captions and code are real DOM text in reading order. Chapter markers on the timeline bar are buttons. The dials are native range inputs. A "skip the journey" link jumps to the plain section.
+- **Budgets.** Under 1.5 MB transferred for the first chapter, 60 fps on a mid-range laptop and 30 fps or better on a recent phone, pixel ratio capped at 2.
 - Base path configurable for GitHub Pages (`/kinetic-engine/`).
+
+## Build order
+
+1. Scroll to master time, camera rail and timeline bar, in a grey-box street made of cubes.
+2. Building kit and procedural street for chapter 2, with fog and the light script.
+3. Kin model and action set; the rickshaw.
+4. Chapters in route order, each finished (motion, caption, code panel, reverse scrub) before the next begins.
+5. Fallback stills, phone tuning, accessibility pass, performance pass.
+6. Deploy to GitHub Pages.
 
 ## Done when
 
-- All seven chapters play forwards and backwards with scroll without visual glitches.
-- Kin never teleports between chapters: each chapter's end pose is the next one's start pose.
-- Reduced-motion and 375 px layouts are checked in a browser.
-- Lighthouse performance and accessibility are at least 90.
+- Scrolling forwards and backwards through all seven chapters shows no pops, teleports or state that fails to rewind.
+- Each chapter's caption, code snippet and street action clearly show the same engine idea.
+- Frame rate and transfer budgets are met on a laptop and a phone, checked in a browser.
+- The fallback path works with WebGL disabled and with reduced motion.
+- Script text on signboards has been confirmed by the user.
 - The page is live on GitHub Pages and linked from the README.
