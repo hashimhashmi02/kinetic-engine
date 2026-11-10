@@ -65,7 +65,7 @@ mod tests {
     fn scalar_endpoints_are_exact() {
         let (a, b) = (0.1_f64, 0.7_f64);
         assert_eq!(a.lerp(&b, 0.0), a);
-        assert_eq!(a.lerp(&b, 1.0), b);
+        assert_eq!(Lerp::lerp(&a, &b, 1.0), b);
         assert_eq!(1e16_f64.lerp(&1.0, 1.0), 1.0);
     }
 
@@ -78,10 +78,11 @@ mod tests {
 
     #[test]
     fn vec2_interpolates_per_component() {
+        // Called through the trait: `DVec2` has an inherent `lerp` that would win otherwise.
         let a = DVec2::new(0.0, 10.0);
         let b = DVec2::new(4.0, -10.0);
-        assert_eq!(a.lerp(&b, 0.25), DVec2::new(1.0, 5.0));
-        assert_eq!(a.lerp(&b, 1.0), b);
+        assert_eq!(Lerp::lerp(&a, &b, 0.25), DVec2::new(1.0, 5.0));
+        assert_eq!(Lerp::lerp(&a, &b, 1.0), b);
     }
 
     #[test]
