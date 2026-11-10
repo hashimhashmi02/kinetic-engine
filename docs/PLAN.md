@@ -31,7 +31,7 @@ A motion engine for people who would rather write animations than keyframe them 
 | Text | cosmic-text | Shaping, fallback and layout in pure Rust |
 | Hot reload | libloading + notify | Scenes as `cdylib`, reload on save |
 | Export | ffmpeg (external process) | H.264 without linking codec libraries |
-| Site | Astro + GSAP | Static output, scroll-scrubbed timelines |
+| Site | Astro + Three.js + GSAP | Static output, scroll-driven 3D journey |
 
 Exact crate versions are pinned in the root `Cargo.toml` as each one is first used.
 
