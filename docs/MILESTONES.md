@@ -15,7 +15,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 ## M1 — First pixels (`v0.1.0`)
 
 - [x] `kinetic-core`: `LinearRgba`, sRGB conversion, colour constants
-- [ ] `kinetic-core`: minimal `Lerp` trait for scalar, vec2, colour
+- [x] `kinetic-core`: minimal `Lerp` trait for scalar, vec2, colour
 - [ ] `kinetic-core`: `ease::linear`, `in_out_cubic`, `out_back`
 - [ ] `kinetic-vector`: circle and rect to path, lyon fill tessellation to a vertex/index mesh
 - [ ] `kinetic-render`: wgpu device setup, offscreen target, MSAA, solid-colour pipeline
