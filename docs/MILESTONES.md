@@ -16,7 +16,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 
 - [x] `kinetic-core`: `LinearRgba`, sRGB conversion, colour constants
 - [x] `kinetic-core`: minimal `Lerp` trait for scalar, vec2, colour
-- [ ] `kinetic-core`: `ease::linear`, `in_out_cubic`, `out_back`
+- [x] `kinetic-core`: `ease::linear`, `in_out_cubic`, `out_back`
 - [ ] `kinetic-vector`: circle and rect to path, lyon fill tessellation to a vertex/index mesh
 - [ ] `kinetic-render`: wgpu device setup, offscreen target, MSAA, solid-colour pipeline
 - [ ] `kinetic-render`: render a mesh list to RGBA bytes (headless)

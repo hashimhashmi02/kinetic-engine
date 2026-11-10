@@ -4,8 +4,9 @@
 //! outputs, with no dependence on the wall clock, randomness or iteration order.
 
 pub mod color;
+pub mod ease;
 pub mod lerp;
 
 pub use color::LinearRgba;
-pub use lerp::Lerp;
 pub use glam::DVec2;
+pub use lerp::Lerp;
