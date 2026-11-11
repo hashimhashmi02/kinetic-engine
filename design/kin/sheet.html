@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kin character sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Hind:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #17132b; --haldi: #f5b921; --rani: #e3266f; --tota: #3fbf5a; --neel: #2b3fae;
+    --madder: #d43a2f; --skin: #b9703f; --paper: #f7f1e1; --ground: #1c2470;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--ground); }
+  body {
+    margin: 0; color: var(--paper); background: var(--ground);
+    font: 400 1.0625rem/1.55 Hind, system-ui, sans-serif;
+  }
+  ::selection { background: var(--haldi); color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--haldi); outline-offset: 3px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px) 96px; }
+  h1, h2 { font-family: "Rozha One", Georgia, serif; font-weight: 400; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(5rem, 17vw, 6rem); line-height: 0.85; color: var(--haldi); }
+  h2 { font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.05; margin: 88px 0 20px; }
+  p { margin: 0 0 14px; max-width: 62ch; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .intro { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: end; padding-top: 56px; }
+  .intro .who { padding-bottom: 40px; }
+  .deva { font-family: "Rozha One", serif; font-size: 2rem; color: var(--paper); margin: 10px 0 22px; }
+  .lede { font-size: 1.3rem; line-height: 1.4; font-weight: 500; }
+  .facts { list-style: none; padding: 0; margin: 22px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; max-width: 46ch; }
+  .facts dt { color: var(--haldi); font-weight: 600; }
+  .facts dd { margin: 0; }
+
+  .plate { background: var(--rani); border: 4px solid var(--ink); border-radius: 6px; position: relative; overflow: hidden; }
+  .plate.tota { background: #2f9d86; } .plate.paper { background: var(--paper); color: var(--ink); }
+  .plate.haldi { background: #f08a3c; } .plate.sky { background: #5fb7e0; }
+  .plate::before { /* street-poster sunburst */
+    content: ""; position: absolute; inset: -40%; opacity: 0.16; pointer-events: none;
+    background: repeating-conic-gradient(from 0deg at 50% 62%, var(--ink) 0 6deg, transparent 6deg 18deg);
+  }
+  .plate > * { position: relative; }
+  .plate figcaption {
+    position: absolute; left: 12px; bottom: 10px; background: var(--ink); color: var(--paper);
+    font-weight: 600; font-size: 0.875rem; padding: 2px 10px; border-radius: 3px;
+  }
+  figure { margin: 0; }
+  .hero { padding: 20px 20px 0; }
+
+  .row { display: grid; gap: 18px; }
+  .three { grid-template-columns: repeat(3, 1fr); }
+  .four { grid-template-columns: repeat(4, 1fr); }
+  .faces { grid-template-columns: repeat(9, 1fr); gap: 10px; }
+  .faces .plate { padding: 6px 6px 30px; }
+  .faces figcaption { left: 6px; bottom: 6px; font-size: 0.8125rem; padding: 1px 7px; }
+  .turn .plate, .poses .plate { padding: 14px 10px 0; }
+
+  .kit { grid-template-columns: repeat(4, 1fr); }
+  .kit .plate { padding: 18px 18px 44px; }
+  .swatches { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 18px; }
+  .sw { border: 4px solid var(--ink); border-radius: 6px; height: 92px; display: flex; align-items: flex-end; padding: 8px 10px; font-weight: 600; font-size: 0.875rem; color: var(--ink); }
+  .sw.dark { color: var(--paper); }
+
+  .scrub { display: grid; grid-template-columns: 340px 1fr; gap: 32px; align-items: center; }
+  .scrub .plate { padding: 14px 10px 0; }
+  input[type=range] { width: 100%; accent-color: var(--haldi); height: 32px; }
+  .stops { display: flex; justify-content: space-between; font-weight: 600; color: var(--haldi); }
+  .rules { columns: 2; column-gap: 40px; padding-left: 1.1em; margin: 0; }
+  .rules li { break-inside: avoid; margin-bottom: 12px; }
+  .rules b { color: var(--haldi); font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .intro, .scrub { grid-template-columns: 1fr; }
+    .three { grid-template-columns: repeat(3, 1fr); }
+    .four, .kit { grid-template-columns: repeat(2, 1fr); }
+    .faces { grid-template-columns: repeat(3, 1fr); }
+    .swatches { grid-template-columns: repeat(4, 1fr); }
+    .rules { columns: 1; }
+    h2 { margin-top: 64px; }
+  }
+</style>
+</head>
+<body>
+<div id="defs"></div>
+<main>
+  <section class="intro">
+    <div class="who">
+      <h1>Kin</h1>
+      <div class="deva" lang="hi">किन</div>
+      <p class="lede">Eleven years old, born in a gali off Chawri Bazar, and the fastest way through Purani Dilli that is not on any map.</p>
+      <p>Kin flies kites from the rooftops, knows which shutter opens first and which chaiwala gives credit, and will walk you to Jama Masjid by a route you could never repeat. Cheeky, quick, warm. Talks with the whole body.</p>
+      <dl class="facts">
+        <dt>Shape</dt><dd>Big square-round head, small body, long limbs. A kite diamond on the back makes the silhouette.</dd>
+        <dt>Carries</dt><dd>A patang, a charkhi of thread, one loose chappal strap.</dd>
+        <dt>Tell</dt><dd>One tuft of hair that never lies flat. The gamcha tail arrives a beat after Kin does.</dd>
+      </dl>
+    </div>
+    <figure class="plate sky hero" id="hero"></figure>
+  </section>
+
+  <h2>Turnaround</h2>
+  <div class="row three turn" id="turn"></div>
+
+  <h2>Nine faces</h2>
+  <div class="row faces" id="faces"></div>
+
+  <h2>Kin in action</h2>
+  <div class="row four poses" id="poses"></div>
+
+  <h2>One rig, any frame</h2>
+  <div class="scrub">
+    <figure class="plate tota" id="scrubStage"></figure>
+    <div>
+      <p>Every pose is data: joint angles and a handful of offsets. Drawing is a pure function of the pose, so any in-between can be computed directly. Drag to scrub from standing to full sprint and back.</p>
+      <label for="t" style="font-weight:600">Stand to sprint</label>
+      <input id="t" type="range" min="0" max="1" step="0.001" value="0.35">
+      <div class="stops"><span>stand</span><span>anticipate</span><span>sprint</span></div>
+    </div>
+  </div>
+
+  <h2>Kit and colour</h2>
+  <div class="row kit" id="kit"></div>
+  <div class="swatches">
+    <div class="sw" style="background:var(--haldi)">Haldi</div>
+    <div class="sw dark" style="background:var(--neel)">Neel</div>
+    <div class="sw dark" style="background:var(--madder)">Madder</div>
+    <div class="sw dark" style="background:var(--rani)">Rani</div>
+    <div class="sw" style="background:var(--tota)">Tota</div>
+    <div class="sw" style="background:var(--skin)">Skin</div>
+    <div class="sw dark" style="background:var(--ink)">Ink</div>
+  </div>
+
+  <h2>How Kin moves</h2>
+  <ol class="rules">
+    <li><b>Eyes, head, body.</b> The eyes go first, the head follows two frames later, the body last.</li>
+    <li><b>Wind up.</b> A dip the opposite way before every run, jump and point.</li>
+    <li><b>Squash on landing,</b> stretch on launch, volume kept, held for three frames at most.</li>
+    <li><b>The gamcha is late.</b> Scarf tails and the hair tuft trail every move and overshoot the stop.</li>
+    <li><b>Never straight.</b> Hands and kite travel on arcs.</li>
+    <li><b>Hold the pose.</b> Kin hits a clear silhouette and stays in it long enough to read.</li>
+    <li><b>Print look.</b> One ink weight, flat colour set slightly off register, halftone only on the shadow side.</li>
+    <li><b>Never mean.</b> Kin teases the visitor, never the street or its people.</li>
+  </ol>
+</main>
+
+<script src="kin.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const fig = (cls, inner, cap) => `<figure class="plate ${cls}">${inner}${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
+  $("defs").innerHTML = Kin.DEFS;
+
+  $("hero").innerHTML = Kin.svg(Kin.POSES.hero, { box: [-170, -335, 340, 360], label: "Kin standing, hands on hips, kite on back" });
+
+  $("turn").innerHTML =
+    fig("tota", Kin.svg({}, { label: "Kin, front view" }), "Front") +
+    fig("tota", Kin.svg({ head: { turn: 0.65, rot: 0 }, expr: "smirk" }, { label: "Kin, three-quarter view" }), "Side-on") +
+    fig("tota", Kin.svg({ view: "back" }, { label: "Kin, back view" }), "Back");
+
+  const faces = [["grin", "Default"], ["open", "Oye!"], ["joy", "Kite is up"], ["smirk", "Smug"], ["wow", "First time"],
+                 ["set", "Race me"], ["oops", "Thread cut"], ["sulk", "Sent home"], ["curious", "Curious"]];
+  $("faces").innerHTML = faces.map(([e, cap], i) => fig("paper", Kin.headSvg(e, i === 3 ? 0.5 : 0, cap), cap)).join("");
+
+  $("poses").innerHTML =
+    fig("haldi", Kin.svg(Kin.POSES.point, { box: [-150, -330, 320, 360], label: "Kin pointing the way" }), "This way") +
+    fig("tota", Kin.svg(Kin.POSES.run, { box: [-160, -345, 320, 375], label: "Kin running" }), "Shortcut") +
+    fig("sky", Kin.svg(Kin.POSES.fly, { box: [-150, -470, 320, 500], label: "Kin flying a kite" }), "Patang") +
+    fig("paper", Kin.svg(Kin.POSES.squat, { box: [-150, -330, 300, 360], label: "Kin squatting to look" }), "Look closer");
+
+  const prop = (inner, cap, box) => fig("paper", `<svg viewBox="${box}" role="img" aria-label="${cap}">${inner}</svg>`, cap);
+  $("kit").innerHTML =
+    prop(Kin.kite(0, -6, 78, 90, 8), "Patang", "-110 -110 220 230") +
+    prop(Kin.charkhi(0, 0, 1.5), "Charkhi", "-110 -110 220 220") +
+    prop(Kin.chappal(0, 0, 1.5), "Hawai chappal", "-110 -110 220 220") +
+    prop(Kin.gamchaSwatch(0, 0, 1.4), "Gamcha", "-110 -110 220 220");
+
+  // Scrub: stand -> crouch (anticipation) -> run, each segment eased. Pure function of t.
+  const stand = Kin.merge(Kin.BASE, Kin.POSES.hero);
+  const crouch = Kin.merge(Kin.BASE, { drop: 22, lean: -9, squash: 0.9, head: { rot: 5, turn: 0.5 }, armL: { sh: -40, el: -30 }, armR: { sh: 40, el: -40 },
+    legL: { hip: -30, knee: 58 }, legR: { hip: 30, knee: -58 }, expr: "set", scarf: 0.5 });
+  const run = Kin.merge(Kin.BASE, Kin.POSES.run);
+  const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(2 - 2 * u, 3) / 2);
+  function frame(t) {
+    const p = t < 0.5 ? Kin.lerpPose(stand, crouch, ease(t * 2)) : Kin.lerpPose(crouch, run, ease((t - 0.5) * 2));
+    $("scrubStage").innerHTML = Kin.svg(p, { box: [-160, -345, 320, 375], label: "Kin between standing and sprinting" });
+  }
+  $("t").addEventListener("input", (e) => frame(+e.target.value));
+  frame(0.35);
+</script>
+</body>
+</html>
