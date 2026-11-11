@@ -1,0 +1,331 @@
+---
+import "@fontsource/rozha-one/400.css";
+import "@fontsource/hind/400.css";
+import "@fontsource/hind/500.css";
+import "@fontsource/hind/600.css";
+import "@fontsource/noto-nastaliq-urdu/400.css";
+import "@fontsource/jetbrains-mono/400.css";
+
+const repo = "https://github.com/hashimhashmi02/kinetic-engine";
+const chapters = [
+  { name: "Still", title: "", body: "", code: "" },
+  {
+    name: "Tween",
+    title: "One tween wakes the street",
+    body: "Give a property a destination, a duration and an easing. Stagger the same move down a whole row of shutters.",
+    code: "s.play(kin.move_to(lane_end), 2.0, ease::in_out_cubic);",
+  },
+  {
+    name: "Spring",
+    title: "Springs with no simulation",
+    body: "Every signboard swings on a closed-form spring, so it scrubs and rewinds exactly. Retune it, then scroll back.",
+    code: "",
+  },
+  {
+    name: "Morph",
+    title: "Anything beats into anything",
+    body: "Shapes are paths. Resample two outlines, pair up their points, and a brass plate becomes a pot, a bell, a lamp.",
+    code: "s.play(brass.morph_to(next_shape), 0.8);",
+  },
+  {
+    name: "Text",
+    title: "Letters are paths too",
+    body: "Text is shaped, then turned into outlines, so a signboard can be repainted from one script into another.",
+    code: 's.play(board.text_to("Hello"), 1.0);',
+  },
+  {
+    name: "Timeline",
+    title: "Grab the playhead",
+    body: "Nothing here is simulated forward. Drag the bar below and every pigeon returns to the step it left.",
+    code: "let frame = timeline.evaluate(t);",
+  },
+  {
+    name: "Export",
+    title: "Then roll the film",
+    body: "The same frames, rendered offscreen and piped to ffmpeg. What you scrubbed is what you ship.",
+    code: "kinetic render scenes/dilli -o film.mp4",
+  },
+];
+const grain =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.2 .8'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E\")";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kinetic: a motion engine where every frame is a function of time</title>
+    <meta name="description" content="Kinetic is a native, GPU-accelerated motion engine in Rust. Follow Kin through Old Delhi and scrub the whole street with your scroll." />
+    <meta name="theme-color" content="#141118" />
+  </head>
+  <body>
+    <a class="skip" href="#start">Skip the journey</a>
+
+    <header class="top">
+      <a class="wordmark" href="#journey">Kinetic</a>
+      <div class="top-actions">
+        <button id="auto" type="button" aria-pressed="false">Let it play</button>
+        <a class="pill" href={repo}>GitHub</a>
+      </div>
+    </header>
+
+    <main>
+      <div id="journey">
+        <div class="stage">
+          <svg id="world" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="img" aria-label="A paper cut-out street in Old Delhi. A boy named Kin walks from Chandni Chowk to the steps of Jama Masjid as the day passes.">
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                <stop id="sky-top" offset="0" stop-color="#1b2140"></stop>
+                <stop id="sky-low" offset="0.82" stop-color="#3a3f66"></stop>
+              </linearGradient>
+              <pattern id="slats" width="10" height="11" patternUnits="userSpaceOnUse">
+                <rect width="10" height="2.5" fill="#0b0810" opacity="0.32"></rect>
+              </pattern>
+              <filter id="kin-paper" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="1.4" dy="2.8" stdDeviation="1.7" flood-color="#07050a" flood-opacity="0.45"></feDropShadow>
+              </filter>
+              <clipPath id="word-clip-0"><rect x="-176" y="-74" width="352" height="148"></rect></clipPath>
+              <clipPath id="word-clip-1"><rect x="176" y="-74" width="0" height="148"></rect></clipPath>
+              <clipPath id="word-clip-2"><rect x="-176" y="-74" width="0" height="148"></rect></clipPath>
+            </defs>
+            <rect width="1600" height="900" fill="url(#sky)"></rect>
+            <circle id="moon" cx="1240" cy="120" r="42" fill="#e6dfcc"></circle>
+            <circle id="sun" cx="240" cy="700" r="70" fill="#f3a66a"></circle>
+            <g id="far"></g>
+            <g id="mid"></g>
+            <g id="near">
+              <g id="near-back"></g>
+              <g id="birds"></g>
+              <g id="kin"></g>
+            </g>
+            <g id="fore"></g>
+            <g id="dust"></g>
+          </svg>
+          <div class="light"></div>
+          <svg id="glow" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+            <defs>
+              <radialGradient id="lamp">
+                <stop offset="0" stop-color="#ffc56b" stop-opacity="0.62"></stop>
+                <stop offset="1" stop-color="#ffc56b" stop-opacity="0"></stop>
+              </radialGradient>
+            </defs>
+            <g id="glow-near"></g>
+          </svg>
+          <div class="grain" style={`background-image:${grain}`}></div>
+          <div class="scrim"></div>
+          <div class="letterbox is-top"></div>
+          <div class="letterbox is-bottom"></div>
+
+          <section class="cap cap-title">
+            <h1>Kinetic</h1>
+            <div class="cap-body">
+              <p>A motion engine where every frame is a pure function of time. Write the scene in Rust, scrub it, export it.</p>
+              <p class="hint">Scroll to press play. Scroll back to rewind.</p>
+            </div>
+          </section>
+          {
+            chapters.slice(1).map((c, i) => (
+              <section class="cap">
+                <h2>{c.title}</h2>
+                <p>
+                  {c.body}
+                  {i === 2 && (
+                    <span class="now">
+                      {" "}On the bench: <span id="brass-name">thali</span>.
+                    </span>
+                  )}
+                </p>
+                {i === 1 ? <code id="spring-code">spring().stiffness(180.0).damping(8.0)</code> : <code>{c.code}</code>}
+                {i === 5 && (
+                  <p class="cta">
+                    <a class="pill is-solid" href={repo}>See the code</a>
+                    <a class="pill" href="#start">How to run it</a>
+                  </p>
+                )}
+              </section>
+            ))
+          }
+
+          <form id="spring-panel" class="panel" onsubmit="return false">
+            <svg viewBox="0 0 240 110" aria-hidden="true">
+              <line x1="0" y1="36" x2="240" y2="36" class="rule"></line>
+              <path id="spring-curve" class="curve"></path>
+            </svg>
+            <p id="spring-read" aria-live="polite"></p>
+            <label>Stiffness <input id="stiffness" type="range" min="30" max="420" step="1" value="180" /></label>
+            <label>Damping <input id="damping" type="range" min="1" max="44" step="0.5" value="8" /></label>
+          </form>
+
+          <div id="render" class="panel">
+            <div class="meter"><div id="render-fill"></div></div>
+            <p id="render-pct">frame 0 of 420</p>
+          </div>
+        </div>
+      </div>
+
+      <section id="start" class="plain">
+        <h2>Run it yourself</h2>
+        <p class="lede">Kinetic is early. The street above is a web demonstration of how the engine thinks; the engine itself is being built in the open, one small commit at a time.</p>
+        <pre><code>git clone {repo}
+cd kinetic-engine
+cargo test --workspace</code></pre>
+
+        <h3>What a scene looks like</h3>
+        <pre><code>{`fn scene(s: &mut Scene) {
+    let kite = s.add(Polygon::kite(80.0).fill(RED));
+    let title = s.add(Text::new("नमस्ते").size(64.0));
+
+    s.play(kite.scale_to(1.5), 0.6, ease::out_back);
+    s.parallel([kite.morph_to(Circle::new(60.0)), title.text_to("Hello")], 1.0);
+    s.play(kite.move_to((300.0, 0.0)), spring().stiffness(180.0));
+}`}</code></pre>
+
+        <h3>Where it stands</h3>
+        <dl class="status">
+          <dt>Built</dt>
+          <dd>Linear premultiplied colour, interpolation, the first easing curves, with tests.</dd>
+          <dt>Next</dt>
+          <dd>GPU renderer and preview window, timeline and combinators, closed-form springs, hot reload.</dd>
+          <dt>Planned</dt>
+          <dd>Path morphing, text as paths, MP4 export, the editor, effects.</dd>
+        </dl>
+        <p><a href={`${repo}/blob/main/docs/MILESTONES.md`}>Read the milestone list</a></p>
+
+        <footer>
+          <p>Made by Hashim Hashmi. Kin and the street are drawn in code as cut paper.</p>
+          <p>For Purani Dilli, with affection.</p>
+        </footer>
+      </section>
+    </main>
+
+    <nav class="bar" aria-label="Timeline">
+      <div id="bar-track">
+        <div id="bar-fill"></div>
+        {
+          chapters.map((c, i) => (
+            <button class="mark" type="button" style={`left:${((i + 0.5) / chapters.length) * 100}%`} aria-current="false">
+              <span>{c.name}</span>
+            </button>
+          ))
+        }
+        <div id="playhead" role="slider" tabindex="0" aria-label="Playhead" aria-valuemin="0" aria-valuemax="7" aria-valuenow="0"></div>
+      </div>
+    </nav>
+
+    <script>
+      import "../world/main.js";
+    </script>
+
+    <style is:global>
+      :root {
+        --ground: #141118; --text: #efe6d4; --dim: #c2b8a4; --accent: #e2533f; --edge: #2f2836;
+        --display: "Rozha One", Georgia, serif; --body: Hind, system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--ground); scrollbar-color: #4d3b58 var(--ground); }
+      body { margin: 0; background: var(--ground); color: var(--text); font: 400 1.0625rem/1.6 var(--body); }
+      ::selection { background: var(--accent); color: var(--ground); }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      a { color: inherit; text-underline-offset: 0.2em; }
+      h1, h2, h3 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
+      p { margin: 0; }
+
+      .skip { position: fixed; left: 12px; top: -60px; z-index: 30; background: var(--text); color: var(--ground); padding: 8px 14px; border-radius: 4px; }
+      .skip:focus { top: 12px; }
+
+      .top { position: fixed; inset: 0 0 auto 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; padding: 18px clamp(16px, 3vw, 36px); pointer-events: none; }
+      .top > * { pointer-events: auto; }
+      .wordmark { font-family: var(--display); font-size: 1.35rem; text-decoration: none; text-shadow: 0 1px 10px #000a; }
+      .top-actions { display: flex; gap: 10px; align-items: center; }
+      .pill, #auto {
+        font: 500 0.9375rem/1 var(--body); color: var(--text); text-decoration: none; cursor: pointer;
+        padding: 10px 16px; border-radius: 999px; border: 1px solid #efe6d455; background: #14111899;
+        transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s;
+      }
+      .pill:hover, #auto:hover { background: var(--text); color: var(--ground); border-color: var(--text); }
+      #auto[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #17100f; }
+      .pill.is-solid { background: var(--accent); border-color: var(--accent); color: #17100f; font-weight: 600; }
+      .pill.is-solid:hover { background: var(--text); border-color: var(--text); }
+
+      #journey { height: 1000vh; position: relative; }
+      .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; background: #1b2140; }
+      .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .light { position: absolute; inset: 0; mix-blend-mode: multiply; background: #6d7cb6; pointer-events: none; }
+      #glow { mix-blend-mode: screen; pointer-events: none; }
+      .grain { position: absolute; inset: 0; opacity: 0.2; mix-blend-mode: multiply; pointer-events: none; }
+      .scrim { position: absolute; inset: 66% 0 0 0; background: linear-gradient(#14111800, #141118c4 60%); pointer-events: none; }
+      .letterbox { position: absolute; left: 0; right: 0; height: 9vh; background: #0b090d; transform: scaleY(0); pointer-events: none; }
+      .letterbox.is-top { top: 0; transform-origin: top; }
+      .letterbox.is-bottom { bottom: 0; transform-origin: bottom; }
+
+      .t-deva, .t-latin { font-family: var(--display); }
+      .t-latin { letter-spacing: 0.04em; }
+      .t-urdu { font-family: "Noto Nastaliq Urdu", serif; }
+
+      .cap { position: absolute; left: 50%; bottom: 76px; width: min(92vw, 40rem); margin-left: calc(min(92vw, 40rem) / -2); text-align: center; opacity: 0; visibility: hidden; text-shadow: 0 1px 14px #000c; }
+      .cap h2 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); line-height: 1.05; margin-bottom: 6px; }
+      .cap p { color: var(--text); max-width: 56ch; margin-inline: auto; }
+      .cap code { display: inline-block; margin-top: 10px; font: 400 0.875rem/1.4 var(--mono); color: var(--text); background: #0d0b10cc; border: 1px solid var(--edge); border-radius: 4px; padding: 7px 12px; text-shadow: none; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+      .cap .now { color: var(--dim); }
+      .cap .cta { display: flex; gap: 10px; justify-content: center; margin-top: 16px; text-shadow: none; }
+      .cap-title { opacity: 1; visibility: visible; inset: 0; width: auto; margin: 0; bottom: 0; left: 0; pointer-events: none; }
+      .cap-title h1 { position: absolute; top: 11vh; left: 0; right: 0; font-size: clamp(4rem, 15vw, 6rem); line-height: 0.9; color: var(--text); }
+      .cap-title .cap-body { position: absolute; left: 50%; bottom: 76px; width: min(92vw, 38rem); transform: translateX(-50%); }
+      .cap-title .hint { color: var(--dim); margin-top: 8px; font-size: 0.9375rem; }
+
+      .panel { position: absolute; background: #0f0d12e6; border: 1px solid var(--edge); border-radius: 6px; padding: 14px 16px; opacity: 0; visibility: hidden; }
+      #spring-panel { right: clamp(12px, 3vw, 40px); top: 50%; transform: translateY(-62%); width: 272px; display: grid; gap: 8px; font-size: 0.875rem; }
+      #spring-panel svg { width: 100%; height: auto; display: block; }
+      #spring-panel .rule { stroke: #efe6d444; stroke-dasharray: 3 5; }
+      #spring-panel .curve { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      #spring-panel p { color: var(--dim); min-height: 2.8em; line-height: 1.4; }
+      #spring-panel label { display: grid; gap: 2px; font-weight: 500; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+      #render { left: 50%; top: 14vh; width: min(84vw, 22rem); transform: translateX(-50%); visibility: visible; text-align: center; font: 400 0.8125rem/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+      .meter { height: 6px; background: var(--edge); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+      #render-fill { height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+
+      .bar { position: fixed; inset: auto 0 0 0; z-index: 20; padding: 0 clamp(16px, 3vw, 36px) 14px; transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      .bar.is-off { opacity: 0; transform: translateY(100%); pointer-events: none; }
+      #bar-track { position: relative; height: 44px; cursor: ew-resize; touch-action: none; }
+      #bar-track::before { content: ""; position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: #efe6d433; }
+      #bar-fill { position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+      .mark { position: absolute; top: 0; width: 44px; height: 44px; margin-left: -22px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--dim); font: 500 0.8125rem/1 var(--body); }
+      .mark::after { content: ""; position: absolute; left: 50%; top: 26px; width: 9px; height: 9px; margin-left: -4.5px; background: var(--ground); border: 1.5px solid var(--dim); transform: rotate(45deg); transition: background-color 0.2s, border-color 0.2s; }
+      .mark span { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); white-space: nowrap; text-shadow: 0 1px 8px #000; transition: color 0.2s; }
+      .mark:hover span, .mark[aria-current="step"] span { color: var(--text); }
+      .mark[aria-current="step"]::after, .mark:hover::after { background: var(--accent); border-color: var(--accent); }
+      #playhead { position: absolute; top: 20px; width: 3px; height: 22px; margin-left: -1.5px; background: var(--text); border-radius: 2px; box-shadow: 0 0 0 4px #14111866; }
+
+      .plain { max-width: 46rem; margin: 0 auto; padding: 120px clamp(16px, 4vw, 32px) 96px; }
+      .plain h2 { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1; margin-bottom: 20px; }
+      .plain h3 { font-size: 1.5rem; margin: 56px 0 14px; }
+      .plain .lede { font-size: 1.2rem; line-height: 1.5; margin-bottom: 24px; max-width: 60ch; }
+      .plain p { color: var(--dim); max-width: 65ch; }
+      .plain .lede { color: var(--text); }
+      pre { margin: 0; background: #0d0b10; border: 1px solid var(--edge); border-radius: 6px; padding: 16px 18px; overflow-x: auto; }
+      pre code { font: 400 0.875rem/1.65 var(--mono); color: var(--text); }
+      .status { display: grid; grid-template-columns: auto 1fr; gap: 10px 22px; margin: 0 0 20px; }
+      .status dt { font-weight: 600; color: var(--accent); }
+      .status dd { margin: 0; color: var(--dim); }
+      footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--edge); display: grid; gap: 4px; font-size: 0.9375rem; }
+
+      @media (max-width: 760px) {
+        #journey { height: 820vh; }
+        .cap, .cap-title .cap-body { bottom: 76px; }
+        .cap code { font-size: 0.75rem; }
+        #spring-panel { top: 76px; right: 50%; transform: translateX(50%); width: min(92vw, 20rem); padding: 10px 12px; }
+        #spring-panel svg { display: none; }
+        #spring-panel p { min-height: 0; }
+        .mark span { display: none; }
+        .mark[aria-current="step"] span { display: block; }
+        #auto { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #auto { display: none; }
+        .pill, .mark::after, .bar { transition: none; }
+      }
+    </style>
+  </body>
+</html>
