@@ -19,7 +19,9 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 const journey = $("#journey");
-const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+const forceStill = new URLSearchParams(location.search).has("still");
+const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
+const reduced = { get matches() { return forceStill || reducedQuery.matches; } };
 
 /* ---------- build the street ---------- */
 
@@ -40,13 +42,15 @@ const shutters = $$(".shutter").map((el) => ({ el, cull: el.closest(".cull"), x:
 /* ---------- Kin's path ---------- */
 
 // Chapter two: Kin walks to the parked rickshaw, rides it down the lane, and steps off.
-const RIDE = { mount: 0.86, go: 1.02, stop: 1.95, off: 2.06, from: 900, to: 2900 };
+const RIDE = { mount: 0.86, go: 1.02, stop: 1.95, off: 2.06, from: 1120, to: 2900 };
+const START = 850;
 const saddleX = (t) => lerp(RIDE.from, RIDE.to, inOutCubic(span(t, RIDE.go, RIDE.stop)));
 const riding = (t) => smooth(span(t, RIDE.go - 0.07, RIDE.go)) * (1 - smooth(span(t, RIDE.stop, RIDE.stop + 0.06)));
 
-const stops = { brass: world.brassX - 270, board: world.boardX - 330, steps: 10050, roof: 10110 };
+const tall = innerWidth < innerHeight;
+const stops = { brass: world.brassX - (tall ? 165 : 270), board: world.boardX - (tall ? 150 : 330), steps: 10050, roof: 10110 };
 const kinKeys = [
-  [0, 610], [RIDE.mount, 610], [RIDE.go, RIDE.from, smooth], [RIDE.stop, RIDE.to, inOutCubic], [RIDE.off, RIDE.to + 110, smooth], [3, 4500, smooth], [3.35, stops.brass, outCubic], [3.9, stops.brass],
+  [0, START], [RIDE.mount, START], [RIDE.go, RIDE.from, smooth], [RIDE.stop, RIDE.to, inOutCubic], [RIDE.off, RIDE.to + 110, smooth], [3, 4500, smooth], [3.35, stops.brass, outCubic], [3.9, stops.brass],
   [4.3, stops.board, inOutCubic], [4.85, stops.board], [5.3, stops.steps, inOutCubic], [6.05, stops.steps],
   [6.3, stops.roof, smooth], [7, stops.roof],
 ];
@@ -262,8 +266,10 @@ function render(t, blink) {
   // Shutters roll up as Kin reaches them.
   for (const s of shutters) {
     if (s.cull.style.display === "none") continue;
-    const open = s.x < 900
-      ? smooth(span(t, 1.04 + ((900 - s.x) / 900) * 0.2, 1.3 + ((900 - s.x) / 900) * 0.2))
+    // Shutters behind the starting point open on a short stagger once the ride begins.
+    const behind = clamp((RIDE.from - s.x) / RIDE.from);
+    const open = s.x < RIDE.from
+      ? smooth(span(t, 1.04 + behind * 0.2, 1.3 + behind * 0.2))
       : smooth(span(x, s.x - 420, s.x - 60));
     if (open !== s.last) {
       s.el.setAttribute("transform", `translate(${s.ox} ${s.oy}) scale(1 ${(1 - open * 0.93).toFixed(3)})`);
@@ -378,15 +384,8 @@ gsap.registerPlugin(ScrollTrigger);
 const clock = { t: targetTime() };
 const range = { trigger: journey, start: "top top", end: "bottom bottom" };
 gsap.matchMedia().add({ motion: "(prefers-reduced-motion: no-preference)", still: "(prefers-reduced-motion: reduce)" }, (context) => {
-  if (context.conditions.motion) {
+  if (context.conditions.motion && !forceStill) {
     gsap.fromTo(clock, { t: 0 }, { t: CHAPTERS, ease: "none", scrollTrigger: { ...range, scrub: 0.6 } });
-  } else {
-    // No scrubbing: hold each chapter's key frame and cut between them.
-    ScrollTrigger.create({
-      ...range,
-      onUpdate: (self) => (clock.t = Math.min(CHAPTERS - 0.35, Math.floor(Math.min(self.progress * CHAPTERS, CHAPTERS - 0.01)) + 0.65)),
-    });
-    clock.t = 0.65;
   }
 });
 
@@ -416,6 +415,8 @@ for (const type of ["wheel", "touchstart", "keydown", "pointerdown"]) {
 let current = clock.t;
 let lastT = -1, lastBlink = -1;
 gsap.ticker.add((time) => {
+  // Reduced motion: no scrubbing. Hold each chapter's key frame and cut between them.
+  if (reduced.matches) clock.t = Math.min(CHAPTERS - 0.35, Math.floor(Math.min(targetTime(), CHAPTERS - 0.01)) + 0.65);
   current = clock.t;
   const blink = !reduced.matches && current > 0.34 && (time * 1000) % 4300 < 130 ? 1 : 0;
   if (current !== lastT || blink !== lastBlink || dirty) {
@@ -452,7 +453,8 @@ el.head.addEventListener("keydown", (event) => {
   event.preventDefault();
   seek(current / CHAPTERS + step * 0.02, false);
 });
-reduced.addEventListener("change", () => (dirty = true));
+reducedQuery.addEventListener("change", () => (dirty = true));
+document.documentElement.classList.toggle("is-still", reduced.matches);
 addEventListener("resize", () => {
   sky?.resize();
   dirty = true;
