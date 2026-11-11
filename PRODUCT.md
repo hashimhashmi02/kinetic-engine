@@ -43,6 +43,7 @@ Every frame is a pure function of time. Scene code compiles to a timeline up fro
 - Project name: Kinetic. Repository: `hashimhashmi02/kinetic-engine`.
 - Portfolio owner: Hashim Hashmi, personal.
 - Character: **Kin**, an Old Delhi kid of about 10 to 12 who acts as a local guide. Street-smart, cheeky, fast, warm. Knows every shortcut in the gali. Must be a properly designed character with a recognisable silhouette, not a generic mascot.
+- Kin design approved by the user (11 Nov 2026): layered paper cut-out, no outlines, grained sheets with soft shadows; bright warm skin, slate-blue kurta, white and grey scarf, indigo shorts, Hawai chappals, red kite on the back as the only saturated colour, small dot eyes, side-swept fringe with one tuft. Source of truth: `design/kin/kin.js` and `design/kin/sheet.html`. An earlier bold comic-print version was rejected.
 - References the user supplied as inspiration (not to be copied): a scroll-driven 3D fly-through studio site, and an illustrated paper-theatre story site with a strongly designed child character.
 - Jama Masjid is shown from outside (exterior, steps, skyline) and treated with respect.
 

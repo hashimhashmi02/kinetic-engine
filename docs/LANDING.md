@@ -15,7 +15,9 @@ Reference for the feel: a scroll fly-through site where every section is a place
 
 ## Kin
 
-A small stylised figure: round head, bean body, simple limbs, two dot eyes, one accent-coloured scarf. Built from a handful of low-poly meshes and rigged with a few bones, or with plain transform hierarchies if that reads well enough. Emotion comes from posture, timing and the eyes.
+Approved design: see `design/kin/sheet.html` (rig in `design/kin/kin.js`). An eleven-year-old from a gali off Chawri Bazar, drawn as a layered paper cut-out: big soft head, small body in a slate-blue kurta, white and grey scarf, thin limbs, a red kite on the back. No outlines; edges come from the shadow each sheet casts on the one below. The kite is the only saturated colour in a frame. Emotion comes from posture, timing and small dot eyes.
+
+The rig is 2D and pose-driven (a pose is data, drawing is a pure function of it). In the street Kin is either a camera-facing layered cut-out placed in the 3D scene, or the whole world is built as layered paper to match; this is decided when the grey-box street exists. Paper grain must be baked into textures for the page, since live SVG filters are too slow.
 
 Kin's actions are clips and procedural poses blended by the master timeline: `idle`, `notice`, `walk`, `pedal`, `hop`, `reach`, `duck`, `carry`, `look-up`, `sit`, `wave`. Scarf and arms get follow-through from a lagged secondary motion that is itself a function of `t` (computed from position at `t - dt`), so it stays scrubbable.
 
