@@ -15,6 +15,8 @@ fn scene(s: &mut Scene) {
 }
 ```
 
+**[See the landing page](https://hashimhashmi02.github.io/kinetic-engine/)**: follow Kin through Old Delhi and scrub the street with your scroll.
+
 ## Why
 
 - **Scrubbable by construction.** Scene code compiles to a timeline up front, so any frame is a pure function of time.

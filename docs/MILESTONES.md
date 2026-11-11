@@ -113,27 +113,27 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 
 ## M9 — Landing page (`v0.9.0`)
 
-See `LANDING.md`: a scroll-driven 3D journey through Old Delhi with Kin.
+See `LANDING.md`: a scroll-driven paper cut-out journey through Old Delhi with Kin.
 
-- [ ] Astro project in `site/`, tokens, typography, base layout
+- [x] Astro project in `site/`, tokens, typography, base layout
 - [ ] Photo references gathered per stretch (not shipped)
-- [ ] Scroll to master time, pinned canvas, timeline bar with chapter markers
-- [ ] Camera rail with debug view, in a grey-box street
-- [ ] Street kit modules and seeded procedural placement; cables
-- [ ] Light script: sky, sun, fog tracks across the day
-- [ ] Kin model and action set; cycle rickshaw
-- [ ] Chapter 1 Mouth of Chandni Chowk (still)
-- [ ] Chapter 2 Chandni Chowk (tween, stagger)
-- [ ] Chapter 3 Under the wires (springs, interactive)
-- [ ] Chapter 4 Nai Sarak into Chawri Bazar (morph)
-- [ ] Chapter 5 Paper market (text)
-- [ ] Chapter 6 Steps of Jama Masjid (timeline, draggable playhead)
-- [ ] Chapter 7 Dusk over the old city (export) and CTA
-- [ ] Plain section: install, quickstart, features, footer
+- [x] Scroll to master time, pinned canvas, timeline bar with chapter markers
+- [x] Camera follows Kin along the street (no debug view)
+- [x] Street kit modules and seeded procedural placement; cables
+- [x] Light script: sky, sun, fog tracks across the day
+- [x] Kin rig and procedural walk (no rickshaw)
+- [x] Chapter 1 Mouth of Chandni Chowk (still)
+- [x] Chapter 2 Chandni Chowk (tween, stagger)
+- [x] Chapter 3 Under the wires (springs, interactive)
+- [x] Chapter 4 Nai Sarak into Chawri Bazar (morph)
+- [x] Chapter 5 Paper market (text)
+- [x] Chapter 6 Steps of Jama Masjid (timeline, draggable playhead)
+- [x] Chapter 7 Dusk over the old city (export) and CTA
+- [x] Plain section: install, quickstart, features, footer
 - [ ] Fallback stills for no WebGL and reduced motion; phone tuning
 - [ ] Signboard script text confirmed by the user
 - [ ] Accessibility and performance pass (budgets in LANDING.md)
-- [ ] GitHub Pages deploy workflow
+- [x] GitHub Pages deploy workflow
 
 ## M10 — The film and 1.0 (`v1.0.0`)
 

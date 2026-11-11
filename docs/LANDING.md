@@ -59,28 +59,27 @@ Jama Masjid is a working place of worship. Show its exterior, steps and skyline 
 - Type: one display face with character for the wordmark and chapter names, a clean sans for captions, a mono for code. Self-hosted and subset, including the Devanagari and Arabic-script glyphs used on signboards if rendered as live text.
 - Decide exact tokens with the `impeccable` and `frontend-design` skills at build time and record them in `site/src/styles/tokens.css`.
 
-## Technical approach
+## Technical approach (as built)
 
-- **Astro** static site. **Three.js** for the world, **GSAP + ScrollTrigger** for mapping scroll to master time and for DOM captions.
-- **Master timeline.** `site/src/world/timeline.ts` defines chapters with start and end times. Everything animated exposes `update(t)`. No per-frame state that depends on the previous frame, except explicitly lagged values computed from `t - dt`.
-- **Camera rail.** A Catmull-Rom spline for position and a second for the look-at target, with per-chapter easing so the camera slows at stops. Small pointer parallax is added on top and does not affect `t`.
-- **World building.** Modular kit: a few building modules, shutters, balconies, signboards, poles, awnings, stalls, combined procedurally along the route with a seeded random generator. Instanced meshes for repeats. Cables are catenary curves generated between anchor points. Hero pieces (rickshaw, the mosque, Kin) are modelled individually, as glTF with Draco compression or built in code.
-- **Streaming.** Only the stretch near the camera is in the scene graph; chapters ahead load during the current one. First paint needs only chapter 1.
-- **Lighting.** One directional sun, hemisphere light, fog. Lamps as emissive materials with a bloom pass after dusk. Shadows baked into vertex colours or a single cascaded shadow map on capable devices.
-- **Springs on the page** use the same closed-form solution as the engine (ported to TypeScript from `kinetic-core`), so the interactive signboard is an honest demo.
-- **Fallbacks.** No WebGL, low-power devices, or `prefers-reduced-motion`: a sequence of pre-rendered stills of each chapter with the same captions and code, no pinning or scrubbing. Phones get a lighter world (fewer instances, no post-processing, lower pixel ratio) and shorter scroll distance.
-- **Accessibility.** Captions and code are real DOM text in reading order. Chapter markers on the timeline bar are buttons. The dials are native range inputs. A "skip the journey" link jumps to the plain section.
-- **Budgets.** Under 1.5 MB transferred for the first chapter, 60 fps on a mid-range laptop and 30 fps or better on a recent phone, pixel ratio capped at 2.
-- Base path configurable for GitHub Pages (`/kinetic-engine/`).
+The world is layered cut paper, to match Kin, so it is drawn as SVG and not as a 3D scene.
 
-## Build order
+- **Astro** static site in `site/`. No animation library: scroll maps to a master time `t` in `site/src/world/main.js`, and `render(t)` draws everything from `t` alone.
+- **Street** (`site/src/world/street.js`): a seeded generator emits four parallax layers (far skyline, mid buildings, near shopfronts, foreground poles and cables). Paper shadows are offset copies of each sheet, which is far cheaper than filters over a street this long. Pieces away from the camera are hidden.
+- **Kin** is the approved rig from `design/kin/kin.js`, imported as is. Walking is procedural: the stride phase comes from distance travelled, so feet do not slide when easing changes speed.
+- **Light**: sky gradient, a multiply layer for the colour of the light, and a screen layer of lamp glows that fades in at night. All are keyframed tracks on `t`.
+- **Chapter mechanics**: shutters open as Kin reaches them; signboards swing on the closed-form spring from the engine docs, with live stiffness and damping; the brass piece morphs between four resampled outlines; the painter's board wipes between three scripts; pigeons fly on per-bird functions of `t`; the last chapter letterboxes and fills a render bar.
+- **Borrowed from the references**: one centred caption low in the frame and almost no chrome; a thin timeline along the bottom; a "Let it play" mode that scrolls for the visitor; drifting flecks of paper.
+- **Fallbacks**: with reduced motion the page holds one key frame per chapter and cuts between them; the auto mode is hidden. Captions and code are real text in reading order, chapter markers are buttons, the playhead is a slider.
+- Deployed by `.github/workflows/pages.yml` to GitHub Pages under `/kinetic-engine/`.
 
-1. Scroll to master time, camera rail and timeline bar, in a grey-box street made of cubes.
-2. Building kit and procedural street for chapter 2, with fog and the light script.
-3. Kin model and action set; the rickshaw.
-4. Chapters in route order, each finished (motion, caption, code panel, reverse scrub) before the next begins.
-5. Fallback stills, phone tuning, accessibility pass, performance pass.
-6. Deploy to GitHub Pages.
+Differences from the first plan: no Three.js or GSAP, no cycle rickshaw (Kin runs), and the text chapter repaints the board with a wipe instead of morphing glyph outlines, since the browser does not expose them cheaply.
+
+## Still to do
+
+- Signboard words in Hindi and Urdu need the user's confirmation.
+- Photo references were not gathered; the street is drawn from general knowledge of the area.
+- Performance and accessibility have not been measured (Lighthouse), and the page has not been tried on a real phone.
+- Portfolio phase: named shopfronts that open onto projects.
 
 ## Done when
 
