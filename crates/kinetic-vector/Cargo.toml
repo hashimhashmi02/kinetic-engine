@@ -11,3 +11,6 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
+kinetic-core = { version = "0.0.0", path = "../kinetic-core" }
+kurbo = "0.13.1"
+lyon_tessellation = "1.0.23"
