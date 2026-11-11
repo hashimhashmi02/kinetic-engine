@@ -1,8 +1,10 @@
-// The journey. Scroll position maps to a master time `t` in [0, CHAPTERS]; everything on
-// stage is drawn from `t` alone, so scrolling back rewinds the street exactly. The only
-// wall-clock inputs are scroll smoothing and Kin's blink, and neither changes what a
-// given `t` looks like.
+// The journey. GSAP ScrollTrigger maps scroll position to a master time `t` in
+// [0, CHAPTERS]; everything on stage is drawn from `t` alone, so scrolling back rewinds
+// the street exactly. The only wall-clock inputs are scrub smoothing and Kin's blink, and
+// neither changes what a given `t` looks like.
 
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import "../../../design/kin/kin.js";
 import { clamp, inOutCubic, lerp, linear, mix, outCubic, resample, rng, smooth, span, spring, track } from "./math.js";
 import { CAM_MAX, GROUND, PARALLAX, brassShapes, buildWorld } from "./street.js";
@@ -164,6 +166,19 @@ for (let i = 0; i < 34; i++) {
 $("#dust").innerHTML = dustMarkup;
 const dustEls = $$("#dust path");
 
+// Flying things are drawn by Three.js when WebGL is available. Without it, the SVG
+// pigeons and flecks above stand in.
+// Three.js is loaded after first paint so the street appears without waiting for it.
+let sky = null;
+import("./sky3d.js")
+  .then(({ createSky }) => {
+    sky = createSky($("#sky3d"), world.steps);
+    $("#birds").style.display = "none";
+    $("#dust").style.display = "none";
+    dirty = true;
+  })
+  .catch(() => ($("#sky3d").style.display = "none"));
+
 /* ---------- light across the day ---------- */
 
 const SKY_TOP = [[0, "#1b2140"], [1, "#39487a"], [1.6, "#7ea0c6"], [3, "#8cb6d8"], [4.5, "#a7bccb"], [5.4, "#c98860"], [6.2, "#4a3957"], [7, "#1c1f36"]];
@@ -289,7 +304,7 @@ function render(t, blink) {
   }
 
   // Pigeons: each one's flight is a function of t, so they land where they left.
-  birds.forEach((bird, k) => {
+  if (!sky) birds.forEach((bird, k) => {
     const e = outCubic(span(t, 5.42 + bird.delay, 5.98 + bird.delay));
     const bx = bird.x + bird.dx * e, by = bird.y - bird.dy * e - Math.sin(e * Math.PI) * 50;
     const flap = e > 0 && e < 1 ? Math.sin(e * 46 + k) : e >= 1 ? Math.sin(k * 2.1 + e) : 0.22;
@@ -297,7 +312,8 @@ function render(t, blink) {
     birdEls[k].wing.setAttribute("d", `M-8,0 L-1,${(-17 * flap).toFixed(1)} L8,0Z`);
   });
 
-  dust.forEach((f, k) => {
+  if (sky) sky.render(t, cam, RISE);
+  else dust.forEach((f, k) => {
     const fx = ((((f.x - t * f.v) % 1700) + 1700) % 1700) - 50;
     const fy = f.y + Math.sin(t * 2.3 + f.ph) * 46;
     dustEls[k].setAttribute("transform", `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${(t * 140 * f.s + f.ph * 60).toFixed(0)}) scale(${f.s})`);
@@ -356,39 +372,52 @@ function seek(progress, smoothScroll) {
   scrollTo({ top: journey.offsetTop + clamp(progress) * scrollRange(), behavior: smoothScroll && !reduced.matches ? "smooth" : "auto" });
 }
 
-// "Let it play": scrolls the page at a steady pace until the visitor takes over.
+// GSAP's ScrollTrigger scrubs one number, clock.t, from the scroll position. The ticker
+// redraws the stage whenever that number (or Kin's blink) changes.
+gsap.registerPlugin(ScrollTrigger);
+const clock = { t: targetTime() };
+const range = { trigger: journey, start: "top top", end: "bottom bottom" };
+gsap.matchMedia().add({ motion: "(prefers-reduced-motion: no-preference)", still: "(prefers-reduced-motion: reduce)" }, (context) => {
+  if (context.conditions.motion) {
+    gsap.fromTo(clock, { t: 0 }, { t: CHAPTERS, ease: "none", scrollTrigger: { ...range, scrub: 0.6 } });
+  } else {
+    // No scrubbing: hold each chapter's key frame and cut between them.
+    ScrollTrigger.create({
+      ...range,
+      onUpdate: (self) => (clock.t = Math.min(CHAPTERS - 0.35, Math.floor(Math.min(self.progress * CHAPTERS, CHAPTERS - 0.01)) + 0.65)),
+    });
+    clock.t = 0.65;
+  }
+});
+
+// "Let it play": a tween scrolls the page at a steady pace until the visitor takes over.
 const autoBtn = $("#auto");
-let auto = false, autoAt = 0;
+let autoTween = null;
 function setAuto(on) {
-  auto = on && !reduced.matches;
-  autoBtn.setAttribute("aria-pressed", String(auto));
-  autoBtn.textContent = auto ? "Pause" : "Let it play";
-  autoAt = 0;
+  autoTween?.kill();
+  autoTween = null;
+  if (on && !reduced.matches) {
+    const from = { y: scrollY }, end = journey.offsetTop + scrollRange();
+    autoTween = gsap.to(from, {
+      y: end, ease: "none", duration: Math.max(0.5, ((end - scrollY) / scrollRange()) * 75),
+      onUpdate: () => scrollTo(0, from.y), onComplete: () => setAuto(false),
+    });
+  }
+  autoBtn.setAttribute("aria-pressed", String(Boolean(autoTween)));
+  autoBtn.textContent = autoTween ? "Pause" : "Let it play";
 }
-autoBtn.addEventListener("click", () => setAuto(!auto));
+autoBtn.addEventListener("click", () => setAuto(!autoTween));
 for (const type of ["wheel", "touchstart", "keydown", "pointerdown"]) {
   addEventListener(type, (event) => {
-    if (auto && !(event.target instanceof Element && event.target.closest("#auto"))) setAuto(false);
+    if (autoTween && !(event.target instanceof Element && event.target.closest("#auto"))) setAuto(false);
   }, { passive: true });
 }
 
-let current = targetTime();
+let current = clock.t;
 let lastT = -1, lastBlink = -1;
-function frame(now) {
-  if (auto) {
-    if (autoAt) scrollBy(0, ((now - autoAt) / 1000) * (scrollRange() / 70));
-    autoAt = now;
-    if (targetTime() >= CHAPTERS - 0.001) setAuto(false);
-  }
-  const target = targetTime();
-  if (reduced.matches) {
-    // No scrubbing: hold each chapter's key frame and cut between them.
-    current = Math.min(CHAPTERS - 0.35, Math.floor(Math.min(target, CHAPTERS - 0.01)) + 0.65);
-  } else {
-    current += (target - current) * 0.16;
-    if (Math.abs(target - current) < 0.0004) current = target;
-  }
-  const blink = !reduced.matches && current > 0.34 && now % 4300 < 130 ? 1 : 0;
+gsap.ticker.add((time) => {
+  current = clock.t;
+  const blink = !reduced.matches && current > 0.34 && (time * 1000) % 4300 < 130 ? 1 : 0;
   if (current !== lastT || blink !== lastBlink || dirty) {
     render(current, blink);
     lastT = current;
@@ -396,9 +425,7 @@ function frame(now) {
     dirty = false;
   }
   el.bar.classList.toggle("is-off", scrollY > journey.offsetTop + scrollRange() + innerHeight * 0.4);
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
+});
 
 /* ---------- timeline bar: click a chapter, or drag the playhead ---------- */
 
@@ -426,4 +453,7 @@ el.head.addEventListener("keydown", (event) => {
   seek(current / CHAPTERS + step * 0.02, false);
 });
 reduced.addEventListener("change", () => (dirty = true));
-addEventListener("resize", () => (dirty = true));
+addEventListener("resize", () => {
+  sky?.resize();
+  dirty = true;
+});
