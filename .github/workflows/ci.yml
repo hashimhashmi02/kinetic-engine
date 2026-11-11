@@ -26,6 +26,9 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # Render tests draw on a software Vulkan adapter (lavapipe), so they need no GPU.
+      - name: Install lavapipe
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libvulkan1
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

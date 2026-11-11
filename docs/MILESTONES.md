@@ -19,7 +19,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `kinetic-core`: `ease::linear`, `in_out_cubic`, `out_back`
 - [x] `kinetic-vector`: circle and rect to path, lyon fill tessellation to a vertex/index mesh
 - [x] `kinetic-render`: wgpu device setup, offscreen target, MSAA, solid-colour pipeline
-- [ ] `kinetic-render`: render a mesh list to RGBA bytes (headless)
+- [x] `kinetic-render`: render a mesh list to RGBA bytes (headless)
 - [ ] Golden test harness: software adapter, tolerance compare, `cargo xtask bless`
 - [ ] First golden: circle and rect on a dark background
 - [ ] `kinetic-editor`: winit window presenting the renderer output
