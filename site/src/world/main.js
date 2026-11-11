@@ -6,6 +6,8 @@
 import "../../../design/kin/kin.js";
 import { clamp, inOutCubic, lerp, linear, mix, outCubic, resample, rng, smooth, span, spring, track } from "./math.js";
 import { CAM_MAX, GROUND, PARALLAX, brassShapes, buildWorld } from "./street.js";
+import { wordAt } from "./glyphmorph.js";
+import { CRANK, SADDLE_Y, rickshaw } from "./rickshaw.js";
 
 const Kin = window.Kin;
 const CHAPTERS = 7;
@@ -35,9 +37,14 @@ const shutters = $$(".shutter").map((el) => ({ el, cull: el.closest(".cull"), x:
 
 /* ---------- Kin's path ---------- */
 
+// Chapter two: Kin walks to the parked rickshaw, rides it down the lane, and steps off.
+const RIDE = { mount: 0.86, go: 1.02, stop: 1.95, off: 2.06, from: 900, to: 2900 };
+const saddleX = (t) => lerp(RIDE.from, RIDE.to, inOutCubic(span(t, RIDE.go, RIDE.stop)));
+const riding = (t) => smooth(span(t, RIDE.go - 0.07, RIDE.go)) * (1 - smooth(span(t, RIDE.stop, RIDE.stop + 0.06)));
+
 const stops = { brass: world.brassX - 270, board: world.boardX - 330, steps: 10050, roof: 10110 };
 const kinKeys = [
-  [0, 700], [1, 700], [2, 2900, inOutCubic], [3, 4500, smooth], [3.35, stops.brass, outCubic], [3.9, stops.brass],
+  [0, 610], [RIDE.mount, 610], [RIDE.go, RIDE.from, smooth], [RIDE.stop, RIDE.to, inOutCubic], [RIDE.off, RIDE.to + 110, smooth], [3, 4500, smooth], [3.35, stops.brass, outCubic], [3.9, stops.brass],
   [4.3, stops.board, inOutCubic], [4.85, stops.board], [5.3, stops.steps, inOutCubic], [6.05, stops.steps],
   [6.3, stops.roof, smooth], [7, stops.roof],
 ];
@@ -76,6 +83,28 @@ function walk(phase, amp) {
   });
 }
 
+// Two-bone leg: thigh and shin angles (rig convention) that put the foot on a target.
+function legTo(hx, hy, tx, ty) {
+  const LEN = 37;
+  const d = clamp(Math.hypot(tx - hx, ty - hy), 8, LEN * 2 - 0.5);
+  const toward = Math.atan2(tx - hx, ty - hy), bend = Math.acos(d / (LEN * 2));
+  const deg = 180 / Math.PI;
+  return { hip: (toward + bend) * deg, knee: -2 * bend * deg, foot: 0.4 };
+}
+
+const KIN_SCALE = 0.92;
+function ridePose(crank) {
+  const lift = -SADDLE_Y / KIN_SCALE - 74;
+  const pedal = (side) => {
+    const a = crank + (side < 0 ? Math.PI : 0);
+    return legTo(side * 12, -74 - lift, (CRANK.x + Math.cos(a) * CRANK.r) / KIN_SCALE, (CRANK.y + Math.sin(a) * CRANK.r) / KIN_SCALE);
+  };
+  return base({
+    lift, lean: 13, head: { rot: -7, turn: 0.8 }, scarf: -1, expr: "joy",
+    armL: { sh: 70, el: 16 }, armR: { sh: 78, el: 10 }, legL: pedal(-1), legR: pedal(1),
+  });
+}
+
 function kinPose(t, x) {
   const speed = Math.abs(kinX(t + 0.01) - kinX(t - 0.01)) / 0.02;
   const amp = clamp(speed / 1900, 0, 1.25);
@@ -83,6 +112,8 @@ function kinPose(t, x) {
   let pose = Kin.lerpPose(still, walk(x / 52, Math.max(amp, 0.25)), smooth(clamp(amp * 3)));
   // Chapter one opens on a held frame: Kin caught mid-stride, then released.
   if (t < 0.34) pose = Kin.lerpPose(walk(1.25, 1), pose, smooth(span(t, 0.14, 0.34)));
+  const ride = riding(t);
+  if (ride > 0) pose = Kin.lerpPose(pose, ridePose((saddleX(t) - RIDE.from) / 40), ride);
   if (t > 6.15) pose.kiteAt = [lerp(70, 150, smooth(span(t, 6.3, 7))), lerp(-320, -455, outCubic(span(t, 6.3, 6.9)))];
   return pose;
 }
@@ -92,9 +123,9 @@ function kinPose(t, x) {
 const ghosts = [];
 let ghostMarkup = "";
 for (let i = 0; i <= 10; i++) {
-  const gx = lerp(700, 2900, inOutCubic(i / 10));
+  const gx = lerp(RIDE.from, RIDE.to, inOutCubic(i / 10));
   ghosts.push(gx);
-  ghostMarkup += `<path d="M0,-9 L9,0 L0,9 L-9,0Z" transform="translate(${gx.toFixed(1)} ${GROUND + 26})" fill="#e2533f"/>`;
+  ghostMarkup += `<path d="M0,-9 L9,0 L0,9 L-9,0Z" transform="translate(${gx.toFixed(1)} ${GROUND + 30})" fill="#e2533f"/>`;
 }
 $("#ghosts").innerHTML = ghostMarkup;
 const ghostEls = $$("#ghosts path");
@@ -104,9 +135,9 @@ const brassPts = brass.shapes.map((shape) => resample(shape, 72));
 const brassKeys = [[3.3, 0], [3.5, 1, inOutCubic], [3.58, 1], [3.74, 2, inOutCubic], [3.82, 2], [3.98, 3, inOutCubic]];
 const brassEl = [$("#brass"), $("#brass-shadow"), $("#brass-shine")];
 
-const boardKeys = [[4.32, 0], [4.5, 1, linear], [4.58, 1], [4.76, 2, linear]];
-const wordClips = [$("#word-clip-1 rect"), $("#word-clip-2 rect")];
-const brush = $("#brush");
+const boardKeys = [[4.3, 0], [4.52, 1, linear], [4.58, 1], [4.8, 2, linear]];
+const wordEls = [$("#word-ink"), $("#word-holes")];
+let lastWord = -1;
 
 const birdRng = rng(77);
 const birds = [];
@@ -142,7 +173,7 @@ const NIGHT = [[0, 1], [0.9, 1], [1.5, 0], [5.6, 0], [6.3, 1], [7, 1]];
 
 const el = {
   skyTop: $("#sky-top"), skyLow: $("#sky-low"), far: $("#far-shape"), sun: $("#sun"), moon: $("#moon"),
-  light: $(".light"), glow: $("#glow"), kin: $("#kin"), stage: $(".stage"),
+  light: $(".light"), glow: $("#glow"), kin: $("#kin"), rick: $("#rick"), stage: $(".stage"),
   caps: $$(".cap"), head: $("#playhead"), fill: $("#bar-fill"), marks: $$(".mark"),
   springPanel: $("#spring-panel"), render: $("#render"), renderFill: $("#render-fill"), renderPct: $("#render-pct"),
   box: $$(".letterbox"), brassName: $("#brass-name"), bar: $(".bar"),
@@ -171,6 +202,8 @@ springUi.c.addEventListener("input", readSpring);
 readSpring();
 
 /* ---------- render one frame from t ---------- */
+
+let lastSaddle = -1;
 
 function window4(t, a, b, c, d) {
   return smooth(span(t, a, b)) * (1 - smooth(span(t, c, d)));
@@ -246,15 +279,14 @@ function render(t, blink) {
   brassEl[2].setAttribute("d", shine);
   el.brassName.textContent = brass.names[Math.round(m)];
 
-  // Signboard repaint: Devanagari, then Urdu from the right, then Latin from the left.
+  // Signboard: the shaped outlines of one word morph into the next.
   const b = track(boardKeys, t);
-  const w1 = clamp(b) * 352, w2 = clamp(b - 1) * 352;
-  wordClips[0].setAttribute("x", (176 - w1).toFixed(1));
-  wordClips[0].setAttribute("width", w1.toFixed(1));
-  wordClips[1].setAttribute("width", w2.toFixed(1));
-  const wet = b > 0 && b < 1 ? 176 - w1 - 7 : b > 1 && b < 2 ? -176 + w2 - 7 : null;
-  brush.setAttribute("opacity", wet === null ? 0 : 1);
-  if (wet !== null) brush.setAttribute("x", wet.toFixed(1));
+  if (b !== lastWord) {
+    const word = wordAt(b);
+    wordEls[0].setAttribute("d", word.ink);
+    wordEls[1].setAttribute("d", word.holes);
+    lastWord = b;
+  }
 
   // Pigeons: each one's flight is a function of t, so they land where they left.
   birds.forEach((bird, k) => {
@@ -271,10 +303,18 @@ function render(t, blink) {
     dustEls[k].setAttribute("transform", `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${(t * 140 * f.s + f.ph * 60).toFixed(0)}) scale(${f.s})`);
   });
 
+  // Rickshaw: parked, ridden, parked again.
+  const sx = saddleX(t);
+  el.rick.setAttribute("transform", `translate(${sx.toFixed(1)} ${GROUND})`);
+  if (sx !== lastSaddle) {
+    el.rick.innerHTML = rickshaw(((sx - RIDE.from) / 60) * (180 / Math.PI), (sx - RIDE.from) / 40);
+    lastSaddle = sx;
+  }
+
   // Kin.
   const pose = kinPose(t, x);
   pose.blink = blink;
-  el.kin.setAttribute("transform", `translate(${x.toFixed(1)} ${(GROUND - kinClimb(x)).toFixed(1)}) scale(0.92)`);
+  el.kin.setAttribute("transform", `translate(${x.toFixed(1)} ${(GROUND - kinClimb(x)).toFixed(1)}) scale(${KIN_SCALE})`);
   el.kin.innerHTML = Kin.draw(pose);
 
   // Captions and panels.

@@ -12,8 +12,8 @@ const chapters = [
   {
     name: "Tween",
     title: "One tween wakes the street",
-    body: "Give a property a destination, a duration and an easing. Stagger the same move down a whole row of shutters.",
-    code: "s.play(kin.move_to(lane_end), 2.0, ease::in_out_cubic);",
+    body: "One move, eased: the diamonds on the road are equal steps in time. Stagger the same idea down a row of shutters.",
+    code: "s.play(rickshaw.move_to(lane_end), 2.0, ease::in_out_cubic);",
   },
   {
     name: "Spring",
@@ -30,7 +30,7 @@ const chapters = [
   {
     name: "Text",
     title: "Letters are paths too",
-    body: "Text is shaped, then turned into outlines, so a signboard can be repainted from one script into another.",
+    body: "Text is shaped, then turned into outlines. These are the real glyph contours, morphing from Devanagari to Urdu to Latin.",
     code: 's.play(board.text_to("Hello"), 1.0);',
   },
   {
@@ -89,9 +89,6 @@ const grain =
               <filter id="kin-paper" x="-30%" y="-30%" width="160%" height="160%">
                 <feDropShadow dx="1.4" dy="2.8" stdDeviation="1.7" flood-color="#07050a" flood-opacity="0.45"></feDropShadow>
               </filter>
-              <clipPath id="word-clip-0"><rect x="-176" y="-74" width="352" height="148"></rect></clipPath>
-              <clipPath id="word-clip-1"><rect x="176" y="-74" width="0" height="148"></rect></clipPath>
-              <clipPath id="word-clip-2"><rect x="-176" y="-74" width="0" height="148"></rect></clipPath>
             </defs>
             <rect width="1600" height="900" fill="url(#sky)"></rect>
             <circle id="moon" cx="1240" cy="120" r="42" fill="#e6dfcc"></circle>
@@ -102,6 +99,7 @@ const grain =
               <g id="near-back"></g>
               <g id="ghosts"></g>
               <g id="birds"></g>
+              <g id="rick"></g>
               <g id="kin"></g>
             </g>
             <g id="fore"></g>

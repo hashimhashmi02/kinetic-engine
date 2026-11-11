@@ -118,12 +118,9 @@ function bay(r, x, w, h, kind, out) {
   if (kind === "paper") {
     // The sign painter's board, repainted from one script to the next.
     const cx = x + w / 2, cy = sy - 34;
-    const word = (j, text, cls, size) =>
-      `<g clip-path="url(#word-clip-${j})"><rect x="-176" y="-74" width="352" height="148" fill="${BONE}"/>` +
-      `<text class="t-${cls}" y="${cls === "urdu" ? -8 : 4}" font-size="${size}" text-anchor="middle" dominant-baseline="central" fill="#7c2a22">${text}</text></g>`;
     s +=
       `<g id="board" transform="translate(${cx} ${cy})">` + P(R(-190, -88, 380, 176), "#3d3040") + F(R(-176, -74, 352, 148), BONE) +
-      word(0, "नमस्ते", "deva", 96) + word(1, "آداب", "urdu", 78) + word(2, "Hello", "latin", 100) + `<rect id="brush" y="-80" width="14" height="160" rx="4" fill="#7c2a22" opacity="0"/></g>`;
+      `<path id="word-ink" fill="#7c2a22"/><path id="word-holes" fill="${BONE}"/></g>`;
     out.boardX = cx;
   }
   return cull(x - 30, x + w + 30, s);
