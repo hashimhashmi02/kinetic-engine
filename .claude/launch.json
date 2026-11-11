@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "http-server", "design/kin", "-p", "4173", "-c-1", "--silent"],
       "port": 4173
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["site/node_modules/astro/bin/astro.mjs", "dev", "--root", "site", "--port", "4321"],
+      "port": 4321
     }
   ]
 }
