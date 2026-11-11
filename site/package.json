@@ -12,6 +12,11 @@
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",
     "@fontsource/rozha-one": "^5.3.0",
-    "astro": "^7.4.10"
+    "astro": "^7.4.10",
+    "gsap": "^3.15.1",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "harfbuzzjs": "^1.6.4"
   }
 }
