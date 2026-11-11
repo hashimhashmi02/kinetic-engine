@@ -20,7 +20,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `kinetic-vector`: circle and rect to path, lyon fill tessellation to a vertex/index mesh
 - [x] `kinetic-render`: wgpu device setup, offscreen target, MSAA, solid-colour pipeline
 - [x] `kinetic-render`: render a mesh list to RGBA bytes (headless)
-- [ ] Golden test harness: software adapter, tolerance compare, `cargo xtask bless`
+- [x] Golden test harness: software adapter, tolerance compare, `cargo xtask bless`
 - [ ] First golden: circle and rect on a dark background
 - [ ] `kinetic-editor`: winit window presenting the renderer output
 - [ ] `kinetic-editor`: egui overlay with a time slider and play/pause
