@@ -144,7 +144,7 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 Record choices here as they are made, newest first, one line each with the reason.
 
-- Landing page world is layered SVG paper with no Three.js or GSAP, to match the approved paper cut-out Kin; scroll maps to one master time and each frame is drawn from it.
+- Landing page street is layered SVG paper, to match the approved paper cut-out Kin; GSAP ScrollTrigger scrubs one master time, Three.js draws the flying things in depth, and signboard text morphs HarfBuzz-shaped outlines.
 - Landing page is a Three.js scroll journey through Old Delhi (was an SVG rig), after the user shared a 3D fly-through reference; the page keeps the rule that everything is a function of scroll time.
 - Spring API is a builder (`spring().stiffness(180.0)`), since Rust has no named arguments.
 - Only serialised bytes cross the scene dylib boundary, to avoid depending on Rust's unstable ABI.

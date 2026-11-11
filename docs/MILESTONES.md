@@ -121,7 +121,7 @@ See `LANDING.md`: a scroll-driven paper cut-out journey through Old Delhi with K
 - [x] Camera follows Kin along the street (no debug view)
 - [x] Street kit modules and seeded procedural placement; cables
 - [x] Light script: sky, sun, fog tracks across the day
-- [x] Kin rig and procedural walk (no rickshaw)
+- [x] Kin rig and procedural walk; cycle rickshaw
 - [x] Chapter 1 Mouth of Chandni Chowk (still)
 - [x] Chapter 2 Chandni Chowk (tween, stagger)
 - [x] Chapter 3 Under the wires (springs, interactive)

@@ -61,24 +61,28 @@ Jama Masjid is a working place of worship. Show its exterior, steps and skyline 
 
 ## Technical approach (as built)
 
-The world is layered cut paper, to match Kin, so it is drawn as SVG and not as a 3D scene.
+The street is layered cut paper, to match Kin, so it is drawn as SVG. Things that fly are drawn in Three.js over it.
 
-- **Astro** static site in `site/`. No animation library: scroll maps to a master time `t` in `site/src/world/main.js`, and `render(t)` draws everything from `t` alone.
+- **Astro** static site in `site/`. **GSAP ScrollTrigger** scrubs one number, the master time `t`, from the scroll position; `render(t)` in `site/src/world/main.js` draws everything from `t` alone. The "Let it play" mode is a GSAP tween that scrolls the page.
+- **Three.js** (`site/src/world/sky3d.js`, loaded after first paint): pigeons with hinged wings, kites folded along the spine with strings, and drifting paper flecks, in real depth with a perspective camera framed to match the SVG. Without WebGL, SVG pigeons and flecks stand in.
+- **Cycle rickshaw** (`site/src/world/rickshaw.js`): Kin walks to it, rides it down the lane and steps off. His feet are placed on the pedals with a two-bone leg solve; wheels and cranks turn with distance travelled.
+- **Glyph morph** (`site/scripts/glyphs.mjs`, `site/src/world/glyphmorph.js`): HarfBuzz shapes the three signboard words at build time and exports the real glyph contours. On the page, contours are resampled, wound the same way, paired left to right, start-aligned and interpolated; unpaired contours grow from or shrink to a point. This is the method planned for the engine.
 - **Street** (`site/src/world/street.js`): a seeded generator emits four parallax layers (far skyline, mid buildings, near shopfronts, foreground poles and cables). Paper shadows are offset copies of each sheet, which is far cheaper than filters over a street this long. Pieces away from the camera are hidden.
 - **Kin** is the approved rig from `design/kin/kin.js`, imported as is. Walking is procedural: the stride phase comes from distance travelled, so feet do not slide when easing changes speed.
 - **Light**: sky gradient, a multiply layer for the colour of the light, and a screen layer of lamp glows that fades in at night. All are keyframed tracks on `t`.
-- **Chapter mechanics**: shutters open as Kin reaches them; signboards swing on the closed-form spring from the engine docs, with live stiffness and damping; the brass piece morphs between four resampled outlines; the painter's board wipes between three scripts; pigeons fly on per-bird functions of `t`; the last chapter letterboxes and fills a render bar.
+- **Chapter mechanics**: shutters open as Kin reaches them, with keyframe diamonds on the road showing eased spacing; signboards swing on the closed-form spring from the engine docs, with live stiffness and damping; the brass piece morphs between four resampled outlines; pigeons fly on per-bird functions of `t`; the last chapter fills the sky with kites, letterboxes and fills a render bar.
 - **Borrowed from the references**: one centred caption low in the frame and almost no chrome; a thin timeline along the bottom; a "Let it play" mode that scrolls for the visitor; drifting flecks of paper.
 - **Fallbacks**: with reduced motion the page holds one key frame per chapter and cuts between them; the auto mode is hidden. Captions and code are real text in reading order, chapter markers are buttons, the playhead is a slider.
 - Deployed by `.github/workflows/pages.yml` to GitHub Pages under `/kinetic-engine/`.
 
-Differences from the first plan: no Three.js or GSAP, no cycle rickshaw (Kin runs), and the text chapter repaints the board with a wipe instead of morphing glyph outlines, since the browser does not expose them cheaply.
+Difference from the first plan: the street itself is SVG paper layers, not a modelled 3D scene.
 
 ## Still to do
 
 - Signboard words in Hindi and Urdu need the user's confirmation.
 - Photo references were not gathered; the street is drawn from general knowledge of the area.
-- Performance and accessibility have not been measured (Lighthouse), and the page has not been tried on a real phone.
+- Performance and accessibility have not been measured (Lighthouse), and the page has not been tried on a real phone. The Three.js chunk is about 530 KB before compression.
+- Reduced-motion mode is written but has not been exercised in a browser.
 - Portfolio phase: named shopfronts that open onto projects.
 
 ## Done when
