@@ -89,6 +89,16 @@ function kinPose(t, x) {
 
 /* ---------- chapter props ---------- */
 
+const ghosts = [];
+let ghostMarkup = "";
+for (let i = 0; i <= 10; i++) {
+  const gx = lerp(700, 2900, inOutCubic(i / 10));
+  ghosts.push(gx);
+  ghostMarkup += `<path d="M0,-9 L9,0 L0,9 L-9,0Z" transform="translate(${gx.toFixed(1)} ${GROUND + 26})" fill="#e2533f"/>`;
+}
+$("#ghosts").innerHTML = ghostMarkup;
+const ghostEls = $$("#ghosts path");
+
 const brass = brassShapes();
 const brassPts = brass.shapes.map((shape) => resample(shape, 72));
 const brassKeys = [[3.3, 0], [3.5, 1, inOutCubic], [3.58, 1], [3.74, 2, inOutCubic], [3.82, 2], [3.98, 3, inOutCubic]];
@@ -96,6 +106,7 @@ const brassEl = [$("#brass"), $("#brass-shadow"), $("#brass-shine")];
 
 const boardKeys = [[4.32, 0], [4.5, 1, linear], [4.58, 1], [4.76, 2, linear]];
 const wordClips = [$("#word-clip-1 rect"), $("#word-clip-2 rect")];
+const brush = $("#brush");
 
 const birdRng = rng(77);
 const birds = [];
@@ -126,7 +137,7 @@ const dustEls = $$("#dust path");
 
 const SKY_TOP = [[0, "#1b2140"], [1, "#39487a"], [1.6, "#7ea0c6"], [3, "#8cb6d8"], [4.5, "#a7bccb"], [5.4, "#c98860"], [6.2, "#4a3957"], [7, "#1c1f36"]];
 const SKY_LOW = [[0, "#3a3f66"], [1, "#e6a886"], [1.6, "#f0d8b8"], [3, "#dde8ee"], [4.5, "#efdcb0"], [5.4, "#f1b47a"], [6.2, "#c8776a"], [7, "#3a3056"]];
-const LIGHT = [[0, "#6d7cb6"], [1, "#e6b6a0"], [1.7, "#fff2de"], [3, "#ffffff"], [4.5, "#ffe8bc"], [5.4, "#f4b48a"], [6.2, "#a67799"], [7, "#585d9a"]];
+const LIGHT = [[0, "#8a96cf"], [1, "#e6b6a0"], [1.7, "#fff2de"], [3, "#ffffff"], [4.5, "#ffe8bc"], [5.4, "#f4b48a"], [6.2, "#a67799"], [7, "#585d9a"]];
 const NIGHT = [[0, 1], [0.9, 1], [1.5, 0], [5.6, 0], [6.3, 1], [7, 1]];
 
 const el = {
@@ -212,6 +223,9 @@ function render(t, blink) {
     }
   }
 
+  const ghostFade = 1 - smooth(span(t, 2.1, 2.4));
+  ghostEls.forEach((g, k) => g.setAttribute("opacity", (smooth(span(x, ghosts[k] - 30, ghosts[k] + 30)) * (t > 1 ? ghostFade : 0)).toFixed(3)));
+
   // Signboards: a push as Kin passes, then the closed-form spring does the rest.
   for (const s of swings) {
     const a = t > s.t0 ? 19 * s.dir * sp.impulse((t - s.t0) * 4.2) : 0;
@@ -238,6 +252,9 @@ function render(t, blink) {
   wordClips[0].setAttribute("x", (176 - w1).toFixed(1));
   wordClips[0].setAttribute("width", w1.toFixed(1));
   wordClips[1].setAttribute("width", w2.toFixed(1));
+  const wet = b > 0 && b < 1 ? 176 - w1 - 7 : b > 1 && b < 2 ? -176 + w2 - 7 : null;
+  brush.setAttribute("opacity", wet === null ? 0 : 1);
+  if (wet !== null) brush.setAttribute("x", wet.toFixed(1));
 
   // Pigeons: each one's flight is a function of t, so they land where they left.
   birds.forEach((bird, k) => {

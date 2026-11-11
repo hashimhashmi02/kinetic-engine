@@ -123,7 +123,7 @@ function bay(r, x, w, h, kind, out) {
       `<text class="t-${cls}" y="${cls === "urdu" ? -8 : 4}" font-size="${size}" text-anchor="middle" dominant-baseline="central" fill="#7c2a22">${text}</text></g>`;
     s +=
       `<g id="board" transform="translate(${cx} ${cy})">` + P(R(-190, -88, 380, 176), "#3d3040") + F(R(-176, -74, 352, 148), BONE) +
-      word(0, "नमस्ते", "deva", 96) + word(1, "آداب", "urdu", 78) + word(2, "Hello", "latin", 100) + `</g>`;
+      word(0, "नमस्ते", "deva", 96) + word(1, "آداب", "urdu", 78) + word(2, "Hello", "latin", 100) + `<rect id="brush" y="-80" width="14" height="160" rx="4" fill="#7c2a22" opacity="0"/></g>`;
     out.boardX = cx;
   }
   return cull(x - 30, x + w + 30, s);
@@ -176,7 +176,7 @@ function masjid(out) {
   out.steps = [];
   for (let k = 0; k < 6; k++) {
     const y = GROUND - 22 * (k + 1), half = 600 - k * 30;
-    s += P(R(cx - half, y, half * 2, 22 * (k + 1)), mix(stone, "#d8b8a0", 0.12 + k * 0.05), 5, 6);
+    s += F(R(cx - half, y, half * 2, 22), mix(stone, "#d8b8a0", 0.1 + k * 0.06)) + F(R(cx - half, y + 17, half * 2, 5), stoneDark);
     // Recorded in street coordinates, after the scale applied to the whole building below.
     out.steps.push({ y: GROUND - (GROUND - y) * SCALE, x0: cx - (half - 30) * SCALE, x1: cx + (half - 30) * SCALE });
   }
@@ -203,6 +203,10 @@ export function buildWorld(seed = 1947) {
   for (let x = -60; x < VIEW + CAM_MAX * PARALLAX.mid + 100; ) {
     const w = r.int(170, 300), h = r.int(380, 640), top = GROUND - h;
     const col = mix(r.pick(FACADES), "#6c6680", 0.55);
+    if (x + w > 4500 && x < 5800) {
+      x += w + 20;
+      continue;
+    }
     let s = P(R(x, top, w, h + 240), col, 6, 8);
     for (let wy = top + 40; wy < GROUND - 120; wy += 86) {
       for (let wx = x + 26; wx < x + w - 40; wx += 62) s += F(arch(wx, wy, 26, 48), mix(col, "#15101a", 0.6));
@@ -238,20 +242,20 @@ export function buildWorld(seed = 1947) {
 
   // Fore: poles and the tangle of cables overhead, closer than the street.
   let fore = "";
-  const foreLen = VIEW + CAM_MAX * PARALLAX.fore;
-  for (let px = 260, k = 0; px < foreLen + 900; px += 860, k++) {
-    let s = F(R(px - 9, 96, 18, 1000), INK) + F(R(px - 70, 128, 140, 9), INK) + F(R(px - 50, 168, 100, 7), INK);
-    const nx = px + 860;
+  const GAP = 1280;
+  for (let px = 260, k = 0; px < 11700; px += GAP, k++) {
+    let s = F(R(px - 6, 96, 12, 1000), INK) + F(R(px - 64, 128, 128, 8), INK) + F(R(px - 46, 166, 92, 6), INK);
+    const nx = px + GAP;
     for (let j = 0; j < 5; j++) {
       const y0 = 120 + j * 13 + r.int(-6, 6), sag = r.int(40, 150);
-      s += `<path d="M${px},${y0} Q${px + 430 + r.int(-90, 90)},${y0 + sag} ${nx},${120 + j * 13}" fill="none" stroke="${INK}" stroke-width="${j % 2 ? 2 : 3}"/>`;
+      s += `<path d="M${px},${y0} Q${px + GAP / 2 + r.int(-120, 120)},${y0 + sag} ${nx},${120 + j * 13}" fill="none" stroke="${INK}" stroke-width="${j % 2 ? 2 : 3}"/>`;
     }
     if (k % 2 === 0) {
-      for (let j = 1; j < 16; j++) {
-        const u = j / 16, bx = px + u * 860, by = 190 + Math.sin(u * Math.PI) * 74;
+      for (let j = 1; j < 22; j++) {
+        const u = j / 22, bx = px + u * GAP, by = 190 + Math.sin(u * Math.PI) * 74;
         s += `<path d="M${bx - 11},${by} L${bx + 11},${by} L${bx},${by + 24}Z" fill="${["#a8504a", "#d9c48f", "#5f8f8a", "#e2d6bf"][j % 4]}"/>`;
       }
-      s += `<path d="M${px},190 Q${px + 430},338 ${nx},190" fill="none" stroke="${INK}" stroke-width="1.5"/>`;
+      s += `<path d="M${px},190 Q${px + GAP / 2},338 ${nx},190" fill="none" stroke="${INK}" stroke-width="1.5"/>`;
     }
     fore += cull(px - 80, nx + 20, s);
   }
