@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c11a95a3e7738349311e5593feac0df2da05eb48b28ff6d74447a178e64eb598 # shrinks to ops = [Play(0, Fade(0.0), Timing { duration: 0.0, curve: Ease(Linear) }), Play(0, Fade(0.0), Timing { duration: 0.24443748675384155, curve: Ease(Linear) })]
+cc d1a9e0244de3c7c86635ed03cd6128fe4855c976ebba0a0eab336eb1c03b553e # shrinks to ops = [Play(0, Move(0.0, 0.0), Timing { duration: 2.9858228729446115, curve: Ease(Linear) }), Play(0, Move(0.0, 0.0), Timing { duration: 0.0, curve: Ease(Linear) }), Play(0, Move(0.0, 0.0), Timing { duration: 13.848190011878136, curve: Spring(Spring { mass: 1.0, stiffness: 20.0, damping: 1.0, velocity: 0.0 }) }), Play(0, Move(0.0, -65.12927972476064), Timing { duration: 2.4676400562053087, curve: Ease(InQuint) })]
+cc 7dc818218b308be70556d7f832615c15986a280a6f7f225af8d8f06f64722bda # shrinks to ops = [Play(0, Scale(0.0), Timing { duration: 13.848190011878136, curve: Spring(Spring { mass: 1.0, stiffness: 20.0, damping: 1.0, velocity: 0.0 }) }), Parallel([(0, Scale(0.0))], Timing { duration: 1.384308404264166, curve: Ease(Linear) })]
