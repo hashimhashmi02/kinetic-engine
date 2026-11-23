@@ -66,10 +66,10 @@ Rules that keep evaluation pure:
 ## Scene API
 
 ```rust
-let circle: Handle<Circle> = s.add(Circle::new(80.0).fill(BLUE));
-s.play(circle.scale_to(1.5), 0.6, ease::out_back);
+let circle: Handle<Circle> = s.add(Circle::new(80.0).fill(palette::blue()));
+s.play(circle.scale_to(1.5), (0.6, Ease::OutBack));
 s.parallel([a.move_to(p), b.fade_to(0.0)], 1.0);
-s.stagger(items.iter().map(|i| i.fade_to(1.0)), 0.4, 0.05);
+s.stagger(items.iter().map(|i| i.fade_to(1.0)), 0.4, 0.05); // timing, then delay
 s.play(circle.move_to((300.0, 0.0)), spring().stiffness(180.0).damping(12.0));
 s.wait(0.5);
 ```
@@ -144,6 +144,13 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- Until hot reload (M3), `kinetic preview` plays `scenes/hello` compiled into the binary; scenes depend only on `kinetic-core` so they can become dylibs unchanged.
+- The hot reload wire format must round-trip `f64` exactly; serde_json does so only with its `float_roundtrip` feature.
+- Spring progress closes its last sub-0.1% gap with a linear correction over the whole duration instead of snapping at the settle time, so a change that starts there does not see a step.
+- Expo and elastic easings are anchored linearly to meet 0 and 1 exactly; the textbook formulas sit about 1/1024 off their ends and relied on clamping.
+- On a track, the segment that started most recently owns the value; an interrupting change resolves its `from` at its own start, so hand-offs never jump.
+- A segment returns exactly its target from its end time on, compared in absolute time, because `t - start` can round under the duration.
+- Timing is one argument (`impl Into<Timing>`): seconds, `(seconds, Ease)`, `(seconds, CubicBezier)` or a `Spring`. Easings are an `Ease` enum rather than function pointers so timelines can be serialised.
 - Render tests share one software-adapter device per test binary and take turns with it, because creating devices from parallel test threads crashed on Windows.
 - Golden images pass on both WARP (Windows) and lavapipe (Linux CI) with a 2/255 per-channel tolerance, so one set of goldens serves both.
 - Landing page street is layered SVG paper, to match the approved paper cut-out Kin; GSAP ScrollTrigger scrubs one master time, Three.js draws the flying things in depth, and signboard text morphs HarfBuzz-shaped outlines.
