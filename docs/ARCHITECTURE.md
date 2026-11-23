@@ -144,6 +144,8 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- Render tests share one software-adapter device per test binary and take turns with it, because creating devices from parallel test threads crashed on Windows.
+- Golden images pass on both WARP (Windows) and lavapipe (Linux CI) with a 2/255 per-channel tolerance, so one set of goldens serves both.
 - Landing page street is layered SVG paper, to match the approved paper cut-out Kin; GSAP ScrollTrigger scrubs one master time, Three.js draws the flying things in depth, and signboard text morphs HarfBuzz-shaped outlines.
 - Landing page is a Three.js scroll journey through Old Delhi (was an SVG rig), after the user shared a 3D fly-through reference; the page keeps the rule that everything is a function of scroll time.
 - Spring API is a builder (`spring().stiffness(180.0)`), since Rust has no named arguments.
