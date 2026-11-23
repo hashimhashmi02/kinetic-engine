@@ -237,6 +237,40 @@ pub fn in_out_elastic(u: f64) -> f64 {
     })
 }
 
+/// A ball dropped onto the target: four bounces, each lower than the last.
+fn bounce(u: f64) -> f64 {
+    const N1: f64 = 7.5625;
+    const D1: f64 = 2.75;
+    let parabola = |u: f64, centre: f64, base: f64| {
+        let x = u - centre / D1;
+        N1 * x * x + base
+    };
+    if u < 1.0 / D1 {
+        N1 * u * u
+    } else if u < 2.0 / D1 {
+        parabola(u, 1.5, 0.75)
+    } else if u < 2.5 / D1 {
+        parabola(u, 2.25, 0.9375)
+    } else {
+        parabola(u, 2.625, 0.984_375)
+    }
+}
+
+/// Falls onto the target and bounces to rest.
+pub fn out_bounce(u: f64) -> f64 {
+    finish(u, bounce)
+}
+
+/// Bounces off the start, higher each time, then leaves.
+pub fn in_bounce(u: f64) -> f64 {
+    finish(u, |u| out_of(bounce, u))
+}
+
+/// Bounces away from the start and onto the end.
+pub fn in_out_bounce(u: f64) -> f64 {
+    finish(u, |u| in_out_of(|v| out_of(bounce, v), u))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -271,6 +305,9 @@ mod tests {
         ("in_elastic", in_elastic),
         ("out_elastic", out_elastic),
         ("in_out_elastic", in_out_elastic),
+        ("out_bounce", out_bounce),
+        ("in_bounce", in_bounce),
+        ("in_out_bounce", in_out_bounce),
     ];
 
     /// Easings that never move backwards.
@@ -392,5 +429,14 @@ mod tests {
         assert!(sample(out_elastic).any(|v| v > 1.3), "out_elastic should overshoot");
         assert!(sample(in_elastic).any(|v| v < -0.3), "in_elastic should undershoot");
         assert!((in_out_elastic(0.5) - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn bounces_stay_inside_the_range() {
+        for f in [out_bounce, in_bounce, in_out_bounce] {
+            assert!((0..=1000).map(|i| f(f64::from(i) / 1000.0)).all(|v| (0.0..=1.0).contains(&v)));
+        }
+        assert_eq!(out_bounce(0.5), 0.765_625);
+        assert_eq!(in_out_bounce(0.5), 0.5);
     }
 }
