@@ -33,7 +33,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `Track`, `Segment`, `Curve`; `Timeline::evaluate(t) -> FrameState`
 - [x] `Scene` builder: `add`, cursor, `play`, `wait`
 - [x] `Handle<T>` and actions: `move_to`, `scale_to`, `rotate_to`, `fade_to`, `fill_to`
-- [ ] `parallel`, `sequence`, `stagger`
+- [x] `parallel`, `sequence`, `stagger`
 - [x] Full easing set (sine, quad, cubic, quart, expo, back, elastic, bounce; in, out, in-out)
 - [x] `CubicBezier` easing
 - [x] Closed-form spring: three damping regimes, initial velocity, settle time

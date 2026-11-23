@@ -273,6 +273,27 @@ impl Scene {
     }
 }
 
+impl Scene {
+    /// Plays several changes with the same timing, each starting `delay` seconds after the
+    /// one before, and moves the cursor to when the last one ends. The classic way to bring
+    /// in a row of items one by one.
+    pub fn stagger(
+        &mut self,
+        actions: impl IntoIterator<Item = Action>,
+        timing: impl Into<Timing>,
+        delay: f64,
+    ) {
+        let timing = timing.into();
+        let delay = delay.max(0.0);
+        let start = self.cursor;
+        let mut end = start;
+        for (i, action) in actions.into_iter().enumerate() {
+            end = end.max(self.schedule(action, start + i as f64 * delay, timing));
+        }
+        self.cursor = end;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -411,5 +432,28 @@ mod tests {
         let tl = s.build();
         assert_eq!(tl.evaluate(0.5).nodes[0].props.position, DVec2::new(10.0, 0.0));
         assert_eq!(tl.evaluate(1.0).nodes[0].props.position, DVec2::new(10.0, 10.0));
+    }
+
+    #[test]
+    fn stagger_offsets_each_start() {
+        let mut s = Scene::new();
+        let items: Vec<_> = (0..4).map(|_| s.add(Circle::new(1.0).opacity(0.0))).collect();
+        s.stagger(items.iter().map(|h| h.fade_to(1.0)), (1.0, Ease::Linear), 0.25);
+        assert_eq!(s.time(), 1.75);
+        let frame = s.build().evaluate(0.5);
+        let opacities: Vec<f64> = frame.nodes.iter().map(|n| n.props.opacity).collect();
+        assert_eq!(opacities, [0.5, 0.25, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn stagger_on_one_property_hands_over_smoothly() {
+        // Overlapping changes to the same track: each takes over where the last had got to.
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(1.0));
+        s.stagger([dot.move_to((10.0, 0.0)), dot.move_to((0.0, 10.0))], (1.0, Ease::Linear), 0.5);
+        let tl = s.build();
+        let at = |t: f64| tl.evaluate(t).nodes[0].props.position;
+        assert!((at(0.5 - 1e-9) - at(0.5)).length() < 1e-6);
+        assert_eq!(at(1.5), DVec2::new(0.0, 10.0));
     }
 }
