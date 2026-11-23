@@ -11,4 +11,5 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
-glam = "0.34.3"
+glam = { version = "0.34.3", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }

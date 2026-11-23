@@ -271,6 +271,156 @@ pub fn in_out_bounce(u: f64) -> f64 {
     finish(u, |u| in_out_of(|v| out_of(bounce, v), u))
 }
 
+/// Every easing in this module, by name. Unlike a function pointer, an [`Ease`] can be
+/// stored in a timeline, compared and serialised.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
+pub enum Ease {
+    /// See [`linear`].
+    Linear,
+    /// See [`in_quad`].
+    InQuad,
+    /// See [`out_quad`].
+    OutQuad,
+    /// See [`in_out_quad`].
+    InOutQuad,
+    /// See [`in_cubic`].
+    InCubic,
+    /// See [`out_cubic`].
+    OutCubic,
+    /// See [`in_out_cubic`].
+    #[default]
+    InOutCubic,
+    /// See [`in_quart`].
+    InQuart,
+    /// See [`out_quart`].
+    OutQuart,
+    /// See [`in_out_quart`].
+    InOutQuart,
+    /// See [`in_quint`].
+    InQuint,
+    /// See [`out_quint`].
+    OutQuint,
+    /// See [`in_out_quint`].
+    InOutQuint,
+    /// See [`in_sine`].
+    InSine,
+    /// See [`out_sine`].
+    OutSine,
+    /// See [`in_out_sine`].
+    InOutSine,
+    /// See [`in_expo`].
+    InExpo,
+    /// See [`out_expo`].
+    OutExpo,
+    /// See [`in_out_expo`].
+    InOutExpo,
+    /// See [`in_circ`].
+    InCirc,
+    /// See [`out_circ`].
+    OutCirc,
+    /// See [`in_out_circ`].
+    InOutCirc,
+    /// See [`in_back`].
+    InBack,
+    /// See [`out_back`].
+    OutBack,
+    /// See [`in_out_back`].
+    InOutBack,
+    /// See [`in_elastic`].
+    InElastic,
+    /// See [`out_elastic`].
+    OutElastic,
+    /// See [`in_out_elastic`].
+    InOutElastic,
+    /// See [`in_bounce`].
+    InBounce,
+    /// See [`out_bounce`].
+    OutBounce,
+    /// See [`in_out_bounce`].
+    InOutBounce,
+}
+
+impl Ease {
+    /// Every variant, in declaration order.
+    pub const ALL: [Ease; 31] = [
+        Self::Linear,
+        Self::InQuad,
+        Self::OutQuad,
+        Self::InOutQuad,
+        Self::InCubic,
+        Self::OutCubic,
+        Self::InOutCubic,
+        Self::InQuart,
+        Self::OutQuart,
+        Self::InOutQuart,
+        Self::InQuint,
+        Self::OutQuint,
+        Self::InOutQuint,
+        Self::InSine,
+        Self::OutSine,
+        Self::InOutSine,
+        Self::InExpo,
+        Self::OutExpo,
+        Self::InOutExpo,
+        Self::InCirc,
+        Self::OutCirc,
+        Self::InOutCirc,
+        Self::InBack,
+        Self::OutBack,
+        Self::InOutBack,
+        Self::InElastic,
+        Self::OutElastic,
+        Self::InOutElastic,
+        Self::InBounce,
+        Self::OutBounce,
+        Self::InOutBounce,
+    ];
+
+    /// The easing function this variant names.
+    pub fn function(self) -> EaseFn {
+        match self {
+            Self::Linear => linear,
+            Self::InQuad => in_quad,
+            Self::OutQuad => out_quad,
+            Self::InOutQuad => in_out_quad,
+            Self::InCubic => in_cubic,
+            Self::OutCubic => out_cubic,
+            Self::InOutCubic => in_out_cubic,
+            Self::InQuart => in_quart,
+            Self::OutQuart => out_quart,
+            Self::InOutQuart => in_out_quart,
+            Self::InQuint => in_quint,
+            Self::OutQuint => out_quint,
+            Self::InOutQuint => in_out_quint,
+            Self::InSine => in_sine,
+            Self::OutSine => out_sine,
+            Self::InOutSine => in_out_sine,
+            Self::InExpo => in_expo,
+            Self::OutExpo => out_expo,
+            Self::InOutExpo => in_out_expo,
+            Self::InCirc => in_circ,
+            Self::OutCirc => out_circ,
+            Self::InOutCirc => in_out_circ,
+            Self::InBack => in_back,
+            Self::OutBack => out_back,
+            Self::InOutBack => in_out_back,
+            Self::InElastic => in_elastic,
+            Self::OutElastic => out_elastic,
+            Self::InOutElastic => in_out_elastic,
+            Self::InBounce => in_bounce,
+            Self::OutBounce => out_bounce,
+            Self::InOutBounce => in_out_bounce,
+        }
+    }
+
+    /// Progress at normalised time `u`.
+    pub fn apply(self, u: f64) -> f64 {
+        self.function()(u)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -438,5 +588,30 @@ mod tests {
         }
         assert_eq!(out_bounce(0.5), 0.765_625);
         assert_eq!(in_out_bounce(0.5), 0.5);
+    }
+
+    #[test]
+    fn ease_enum_covers_every_function() {
+        assert_eq!(Ease::ALL.len(), ALL.len());
+        // Each variant must apply a function from the list, and no two variants the same one.
+        let mut seen = Vec::new();
+        for variant in Ease::ALL {
+            let samples: Vec<f64> =
+                [0.13, 0.37, 0.61, 0.89].iter().map(|&u| variant.apply(u)).collect();
+            let matches = ALL
+                .iter()
+                .filter(|(_, f)| {
+                    [0.13, 0.37, 0.61, 0.89].iter().map(|&u| f(u)).eq(samples.iter().copied())
+                })
+                .count();
+            assert_eq!(matches, 1, "{variant:?}");
+            assert!(!seen.contains(&samples), "{variant:?} duplicates another variant");
+            seen.push(samples);
+        }
+    }
+
+    #[test]
+    fn default_ease_is_in_out_cubic() {
+        assert_eq!(Ease::default(), Ease::InOutCubic);
     }
 }

@@ -8,5 +8,6 @@ pub mod ease;
 pub mod lerp;
 
 pub use color::LinearRgba;
+pub use ease::Ease;
 pub use glam::DVec2;
 pub use lerp::Lerp;

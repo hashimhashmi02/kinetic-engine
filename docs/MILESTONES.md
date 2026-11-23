@@ -22,9 +22,9 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `kinetic-render`: render a mesh list to RGBA bytes (headless)
 - [x] Golden test harness: software adapter, tolerance compare, `cargo xtask bless`
 - [x] First golden: circle and rect on a dark background
-- [ ] `kinetic-editor`: winit window presenting the renderer output
-- [ ] `kinetic-editor`: egui overlay with a time slider and play/pause
-- [ ] One hard-coded tween (circle position, eased) driven by the slider
+- [x] `kinetic-editor`: winit window presenting the renderer output
+- [x] `kinetic-editor`: egui overlay with a time slider and play/pause
+- [x] One hard-coded tween (circle position, eased) driven by the slider
 - [x] `kinetic preview` opens the window
 
 ## M2 — Timeline and animation (`v0.2.0`)
@@ -34,7 +34,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [ ] `Scene` builder: `add`, cursor, `play`, `wait`
 - [ ] `Handle<T>` and actions: `move_to`, `scale_to`, `rotate_to`, `fade_to`, `fill_to`
 - [ ] `parallel`, `sequence`, `stagger`
-- [ ] Full easing set (sine, quad, cubic, quart, expo, back, elastic, bounce; in, out, in-out)
+- [x] Full easing set (sine, quad, cubic, quart, expo, back, elastic, bounce; in, out, in-out)
 - [ ] `CubicBezier` easing
 - [ ] Closed-form spring: three damping regimes, initial velocity, settle time
 - [ ] Property tests: endpoints, continuity, evaluate purity and order independence
