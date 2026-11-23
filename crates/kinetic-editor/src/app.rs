@@ -3,15 +3,15 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use kinetic_core::Timeline;
 use kinetic_render::wgpu;
-use kinetic_render::{AdapterChoice, Gpu, Renderer};
+use kinetic_render::{AdapterChoice, Frame, Gpu, Renderer};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-use crate::demo::{self, Demo};
 use crate::EditorError;
 
 /// Playback state. The wall clock only ever advances `time`; what is drawn depends on
@@ -19,6 +19,7 @@ use crate::EditorError;
 #[derive(Debug)]
 struct Transport {
     time: f64,
+    duration: f64,
     playing: bool,
     last_tick: Instant,
 }
@@ -28,9 +29,8 @@ impl Transport {
         let now = Instant::now();
         if self.playing {
             self.time += now.duration_since(self.last_tick).as_secs_f64();
-            if self.time >= demo::DURATION {
-                self.time %= demo::DURATION;
-            }
+            // Loop. A zero-length scene simply stays on its only frame.
+            self.time = if self.duration > 0.0 { self.time % self.duration } else { 0.0 };
         }
         self.last_tick = now;
     }
@@ -48,7 +48,7 @@ struct View {
 
 struct App {
     instance: wgpu::Instance,
-    demo: Demo,
+    timeline: Timeline,
     transport: Transport,
     view: Option<View>,
     error: Option<EditorError>,
@@ -121,7 +121,7 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 self.transport.tick();
-                view.redraw(&self.demo, &mut self.transport);
+                view.redraw(&self.timeline, &mut self.transport);
                 if self.transport.playing {
                     view.window.request_redraw();
                 }
@@ -133,7 +133,7 @@ impl ApplicationHandler for App {
 }
 
 impl View {
-    fn redraw(&mut self, demo: &Demo, transport: &mut Transport) {
+    fn redraw(&mut self, timeline: &Timeline, transport: &mut Transport) {
         let frame = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
@@ -156,7 +156,7 @@ impl View {
                         transport.playing = !transport.playing;
                     }
                     ui.spacing_mut().slider_width = (ui.available_width() - 90.0).max(80.0);
-                    let slider = egui::Slider::new(&mut transport.time, 0.0..=demo::DURATION)
+                    let slider = egui::Slider::new(&mut transport.time, 0.0..=transport.duration)
                         .suffix(" s")
                         .fixed_decimals(2);
                     if ui.add(slider).dragged() {
@@ -177,7 +177,11 @@ impl View {
         let mut encoder = device.create_command_encoder(&Default::default());
 
         // The scene keeps its aspect ratio: fit the scene rectangle inside the window.
-        let mut scene = demo.frame(transport.time);
+        let state = timeline.evaluate(transport.time);
+        // Flatten curves to a quarter of a pixel at the current window size.
+        let pixels_per_unit =
+            (f64::from(size.0) / state.size.x).min(f64::from(size.1) / state.size.y).max(1e-6);
+        let mut scene = Frame::from_state(&state, 0.25 / pixels_per_unit);
         let window_aspect = f64::from(size.0) / f64::from(size.1);
         let scene_aspect = scene.size.x / scene.size.y;
         if window_aspect > scene_aspect {
@@ -225,8 +229,8 @@ impl View {
     }
 }
 
-/// Opens the preview window and runs until it is closed.
-pub fn run() -> Result<(), EditorError> {
+/// Opens a preview window playing `timeline` on a loop and runs until it is closed.
+pub fn run(timeline: Timeline) -> Result<(), EditorError> {
     let event_loop = EventLoop::new().map_err(|e| EditorError::Window(e.to_string()))?;
     event_loop.set_control_flow(ControlFlow::Wait);
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_with_display_handle_from_env(
@@ -234,8 +238,13 @@ pub fn run() -> Result<(), EditorError> {
     ));
     let mut app = App {
         instance,
-        demo: Demo::new(0.1),
-        transport: Transport { time: 0.0, playing: true, last_tick: Instant::now() },
+        transport: Transport {
+            time: 0.0,
+            duration: timeline.duration,
+            playing: true,
+            last_tick: Instant::now(),
+        },
+        timeline,
         view: None,
         error: None,
     };

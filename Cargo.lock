@@ -997,6 +997,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hello"
+version = "0.0.0"
+dependencies = [
+ "kinetic-core",
+]
+
+[[package]]
 name = "hermit-abi"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1245,6 +1252,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 name = "kinetic-cli"
 version = "0.0.0"
 dependencies = [
+ "hello",
  "kinetic-editor",
 ]
 
@@ -1267,7 +1275,6 @@ dependencies = [
  "egui-winit",
  "kinetic-core",
  "kinetic-render",
- "kinetic-vector",
  "pollster",
  "winit",
 ]

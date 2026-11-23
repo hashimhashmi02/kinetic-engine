@@ -1,7 +1,6 @@
 //! Preview viewport, timeline scrubber and inspector.
 
 mod app;
-pub mod demo;
 
 use std::fmt;
 
