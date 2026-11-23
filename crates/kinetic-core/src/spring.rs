@@ -191,6 +191,19 @@ impl Spring {
     }
 }
 
+impl Spring {
+    /// Soft and slow, a slight overshoot.
+    pub const GENTLE: Self = Self { mass: 1.0, stiffness: 120.0, damping: 14.0, velocity: 0.0 };
+    /// Bouncy, two or three visible swings.
+    pub const WOBBLY: Self = Self { mass: 1.0, stiffness: 180.0, damping: 12.0, velocity: 0.0 };
+    /// Firm, a small overshoot.
+    pub const STIFF: Self = Self { mass: 1.0, stiffness: 210.0, damping: 20.0, velocity: 0.0 };
+    /// Heavy and unhurried, no overshoot.
+    pub const SLOW: Self = Self { mass: 1.0, stiffness: 280.0, damping: 60.0, velocity: 0.0 };
+    /// Quick to arrive, barely any overshoot.
+    pub const SNAPPY: Self = Self { mass: 1.0, stiffness: 400.0, damping: 30.0, velocity: 0.0 };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,5 +310,15 @@ mod tests {
     #[test]
     fn undamped_spring_is_cut_off() {
         assert_eq!(spring().damping(0.0).settle_time(), MAX_SETTLE);
+    }
+
+    #[test]
+    fn presets_behave_as_described() {
+        let peak =
+            |s: Spring| (0..3000).map(|i| s.value(f64::from(i) / 1000.0)).fold(0.0, f64::max);
+        assert!(peak(Spring::WOBBLY) > peak(Spring::GENTLE));
+        assert!(peak(Spring::SLOW) <= 1.0, "slow must not overshoot");
+        assert!(Spring::SNAPPY.settle_time() < Spring::GENTLE.settle_time());
+        assert_eq!(spring(), Spring::WOBBLY);
     }
 }
