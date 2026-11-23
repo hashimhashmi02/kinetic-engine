@@ -243,6 +243,36 @@ impl<N> Handle<N> {
     }
 }
 
+impl Scene {
+    /// Plays several changes at once, all with the same timing, and moves the cursor to
+    /// their common end.
+    pub fn parallel(
+        &mut self,
+        actions: impl IntoIterator<Item = Action>,
+        timing: impl Into<Timing>,
+    ) {
+        let timing = timing.into();
+        let start = self.cursor;
+        let mut end = start;
+        for action in actions {
+            end = end.max(self.schedule(action, start, timing));
+        }
+        self.cursor = end.max(start + timing.duration.max(0.0));
+    }
+
+    /// Plays several changes one after another, each with the same timing.
+    pub fn sequence(
+        &mut self,
+        actions: impl IntoIterator<Item = Action>,
+        timing: impl Into<Timing>,
+    ) {
+        let timing = timing.into();
+        for action in actions {
+            self.play(action, timing);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,5 +380,36 @@ mod tests {
         assert_eq!(dot.fade_to(3.0).target, Value::Scalar(1.0));
         s.play(dot.fade_to(-1.0), 1.0);
         assert_eq!(s.build().evaluate(1.0).nodes[0].props.opacity, 0.0);
+    }
+
+    #[test]
+    fn parallel_starts_together_and_ends_together() {
+        let mut s = Scene::new();
+        let a = s.add(Circle::new(1.0));
+        let b = s.add(Circle::new(1.0));
+        s.wait(1.0);
+        s.parallel([a.move_to((10.0, 0.0)), b.fade_to(0.0)], (2.0, Ease::Linear));
+        assert_eq!(s.time(), 3.0);
+        let mid = s.build().evaluate(2.0);
+        assert_eq!(mid.nodes[0].props.position, DVec2::new(5.0, 0.0));
+        assert_eq!(mid.nodes[1].props.opacity, 0.5);
+    }
+
+    #[test]
+    fn empty_parallel_still_takes_its_time() {
+        let mut s = Scene::new();
+        s.parallel([], 1.5);
+        assert_eq!(s.time(), 1.5);
+    }
+
+    #[test]
+    fn sequence_chains_with_equal_timing() {
+        let mut s = Scene::new();
+        let a = s.add(Circle::new(1.0));
+        s.sequence([a.move_to((10.0, 0.0)), a.move_to((10.0, 10.0)), a.fade_to(0.0)], 0.5);
+        assert_eq!(s.time(), 1.5);
+        let tl = s.build();
+        assert_eq!(tl.evaluate(0.5).nodes[0].props.position, DVec2::new(10.0, 0.0));
+        assert_eq!(tl.evaluate(1.0).nodes[0].props.position, DVec2::new(10.0, 10.0));
     }
 }
