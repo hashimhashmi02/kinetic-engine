@@ -321,4 +321,46 @@ mod tests {
         assert!(Spring::SNAPPY.settle_time() < Spring::GENTLE.settle_time());
         assert_eq!(spring(), Spring::WOBBLY);
     }
+
+    /// Integrates `m x'' + c x' + k (x - 1) = 0` with classic fourth-order Runge-Kutta.
+    fn integrate(s: Spring, until: f64) -> f64 {
+        let accel = |x: f64, v: f64| -(s.damping * v + s.stiffness * (x - 1.0)) / s.mass;
+        let (mut x, mut v) = (0.0, s.velocity);
+        let steps = (until / 1e-4).round() as u32;
+        let dt = until / f64::from(steps);
+        for _ in 0..steps {
+            let (k1x, k1v) = (v, accel(x, v));
+            let (k2x, k2v) = (v + k1v * dt / 2.0, accel(x + k1x * dt / 2.0, v + k1v * dt / 2.0));
+            let (k3x, k3v) = (v + k2v * dt / 2.0, accel(x + k2x * dt / 2.0, v + k2v * dt / 2.0));
+            let (k4x, k4v) = (v + k3v * dt, accel(x + k3x * dt, v + k3v * dt));
+            x += dt / 6.0 * (k1x + 2.0 * k2x + 2.0 * k3x + k4x);
+            v += dt / 6.0 * (k1v + 2.0 * k2v + 2.0 * k3v + k4v);
+        }
+        x
+    }
+
+    #[test]
+    fn closed_form_matches_numerical_integration() {
+        for s in springs() {
+            for t in [0.1, 0.35, 0.8, 1.5] {
+                let (exact, numeric) = (s.value(t), integrate(s, t));
+                assert!((exact - numeric).abs() < 1e-6, "{s:?} at {t}: {exact} vs {numeric}");
+            }
+        }
+    }
+
+    #[test]
+    fn continuous_across_critical_damping() {
+        // Just below, at and just above critical damping the three formulas must agree.
+        let critical = 2.0 * 100.0_f64.sqrt();
+        for velocity in [0.0, 4.0] {
+            let at = |c: f64| spring().stiffness(100.0).damping(c).velocity(velocity);
+            for t in [0.05, 0.2, 0.6] {
+                let (below, exact, above) =
+                    (at(critical * (1.0 - 1e-4)), at(critical), at(critical * (1.0 + 1e-4)));
+                assert!((below.value(t) - exact.value(t)).abs() < 1e-3);
+                assert!((above.value(t) - exact.value(t)).abs() < 1e-3);
+            }
+        }
+    }
 }
