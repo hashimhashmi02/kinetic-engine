@@ -6,12 +6,13 @@ A native, GPU-accelerated motion engine. Write animations in Rust, watch them li
 
 ```rust
 fn scene(s: &mut Scene) {
-    let circle = s.add(Circle::new(80.0).fill(BLUE));
-    let title = s.add(Text::new("Hello").size(64.0));
+    let circle = s.add(Circle::new(80.0).fill(palette::blue()));
+    let bars: Vec<_> = (0..5).map(|i| s.add(Rect::new(40.0, 120.0).at((i as f64 * 120.0, -200.0)))).collect();
 
-    s.play(circle.scale_to(1.5), 0.6, ease::out_back);
-    s.parallel([circle.morph_to(Rect::new(200.0, 120.0)), title.text_to("World")], 1.0);
-    s.play(circle.move_to((300.0, 0.0)), spring().stiffness(180.0));
+    s.play(circle.scale_to(1.5), (0.6, Ease::OutBack));
+    s.parallel([circle.move_to((0.0, 60.0)), circle.fill_to(red)], (1.0, CubicBezier::EASE));
+    s.play(circle.move_to((300.0, 0.0)), spring().stiffness(180.0).damping(10.0));
+    s.stagger(bars.iter().map(|b| b.fade_to(1.0)), (0.5, Ease::OutCubic), 0.08);
 }
 ```
 
@@ -42,7 +43,10 @@ Requires stable Rust and, for export, `ffmpeg` on `PATH`.
 
 ```bash
 cargo test --workspace
+cargo run -p kinetic-cli -- preview    # plays scenes/hello
 ```
+
+Timings are written as seconds (`0.6`), seconds with an easing (`(0.6, Ease::OutBack)`), seconds with a cubic bezier (`(0.6, CubicBezier::EASE)`), or a spring, which lasts until it settles.
 
 ## License
 
