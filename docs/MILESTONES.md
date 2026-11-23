@@ -38,7 +38,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `CubicBezier` easing
 - [x] Closed-form spring: three damping regimes, initial velocity, settle time
 - [x] Property tests: endpoints, continuity, evaluate purity and order independence
-- [ ] `serde` round trip for `Timeline`
+- [x] `serde` round trip for `Timeline`
 - [ ] Editor previews a `Timeline` built from an in-process scene function
 - [ ] `scenes/hello` example
 
