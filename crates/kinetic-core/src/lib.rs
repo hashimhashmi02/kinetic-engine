@@ -7,6 +7,7 @@ pub mod bezier;
 pub mod color;
 pub mod ease;
 pub mod lerp;
+pub mod node;
 pub mod spring;
 pub mod value;
 
@@ -15,5 +16,6 @@ pub use color::LinearRgba;
 pub use ease::Ease;
 pub use glam::DVec2;
 pub use lerp::Lerp;
+pub use node::{Circle, Node, NodeDef, NodeId, PropertyId, Props, Rect, Shape};
 pub use spring::{spring, Spring};
 pub use value::Value;
