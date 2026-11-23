@@ -6,6 +6,7 @@
 
 mod gpu;
 mod headless;
+mod lower;
 mod renderer;
 
 use std::fmt;
