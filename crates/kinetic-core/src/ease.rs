@@ -135,8 +135,16 @@ fn sine(u: f64) -> f64 {
     1.0 - (u * std::f64::consts::FRAC_PI_2).cos()
 }
 
+/// Removes the small offsets some textbook curves have at their ends, so they meet 0 and
+/// 1 exactly and continuously instead of being snapped there by [`finish`]. The correction
+/// is linear in `u` and at most a tenth of a percent.
+fn anchored(f: impl Fn(f64) -> f64, u: f64) -> f64 {
+    f(u) - (1.0 - u) * f(0.0) - u * (f(1.0) - 1.0)
+}
+
 fn expo(u: f64) -> f64 {
-    (10.0 * u - 10.0).exp2()
+    // 2^(10u - 10) is 1/1024 at u = 0, not 0.
+    anchored(|u| (10.0 * u - 10.0).exp2(), u)
 }
 
 fn circ(u: f64) -> f64 {
@@ -212,7 +220,7 @@ const ELASTIC_C4: f64 = std::f64::consts::TAU / 3.0;
 const ELASTIC_C5: f64 = std::f64::consts::TAU / 4.5;
 
 fn elastic(u: f64) -> f64 {
-    -(10.0 * u - 10.0).exp2() * ((10.0 * u - 10.75) * ELASTIC_C4).sin()
+    anchored(|u| -(10.0 * u - 10.0).exp2() * ((10.0 * u - 10.75) * ELASTIC_C4).sin(), u)
 }
 
 /// Winds up with growing wobbles, then snaps away.
@@ -227,14 +235,15 @@ pub fn out_elastic(u: f64) -> f64 {
 
 /// Wobbles up, snaps through the middle, rings down.
 pub fn in_out_elastic(u: f64) -> f64 {
-    finish(u, |u| {
+    let raw = |u: f64| {
         let wave = ((20.0 * u - 11.125) * ELASTIC_C5).sin();
         if u < 0.5 {
             -(20.0 * u - 10.0).exp2() * wave / 2.0
         } else {
             (-20.0 * u + 10.0).exp2() * wave / 2.0 + 1.0
         }
-    })
+    };
+    finish(u, |u| anchored(raw, u))
 }
 
 /// A ball dropped onto the target: four bounces, each lower than the last.
@@ -557,7 +566,8 @@ mod tests {
         let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
         assert!(close(in_sine(0.5), 1.0 - std::f64::consts::FRAC_1_SQRT_2));
         assert!(close(out_sine(0.5), std::f64::consts::FRAC_1_SQRT_2));
-        assert!(close(in_expo(0.5), 0.03125));
+        // 2^-5, less half the 2^-10 anchoring correction.
+        assert!(close(in_expo(0.5), 0.03125 - 0.5 / 1024.0));
         assert!(close(in_circ(0.5), 1.0 - 0.75_f64.sqrt()));
         for f in [in_out_sine, in_out_expo, in_out_circ] {
             assert!(close(f(0.5), 0.5));
@@ -613,5 +623,16 @@ mod tests {
     #[test]
     fn default_ease_is_in_out_cubic() {
         assert_eq!(Ease::default(), Ease::InOutCubic);
+    }
+
+    #[test]
+    fn no_easing_jumps_at_its_ends() {
+        // Pinning hides an offset at exactly 0 and 1; just inside the ends the curve must
+        // already be there. Circ moves sqrt(2h) in a step of h, so h is tiny.
+        let h = 1e-12;
+        for (name, f) in ALL {
+            assert!(f(h).abs() < 1e-5, "{name} starts at {}", f(h));
+            assert!((f(1.0 - h) - 1.0).abs() < 1e-5, "{name} ends at {}", f(1.0 - h));
+        }
     }
 }
