@@ -215,6 +215,34 @@ impl Scene {
     }
 }
 
+impl<N> Handle<N> {
+    /// Scales the node uniformly; 1 is its original size.
+    pub fn scale_to(&self, factor: f64) -> Action {
+        self.action(PropertyId::Scale, Value::Vec2(DVec2::splat(factor)))
+    }
+
+    /// Scales the node by separate factors along x and y.
+    pub fn scale_xy_to(&self, factors: impl Into<DVec2>) -> Action {
+        self.action(PropertyId::Scale, Value::Vec2(factors.into()))
+    }
+
+    /// Rotates the node to `radians`, counter-clockwise. Takes the long way round when told
+    /// to: going from 0 to `TAU` is a full turn.
+    pub fn rotate_to(&self, radians: f64) -> Action {
+        self.action(PropertyId::Rotation, Value::Scalar(radians))
+    }
+
+    /// Fades the node to `opacity`, where 0 is invisible and 1 is solid.
+    pub fn fade_to(&self, opacity: f64) -> Action {
+        self.action(PropertyId::Opacity, Value::Scalar(opacity.clamp(0.0, 1.0)))
+    }
+
+    /// Changes the node's fill colour; the blend happens in linear light.
+    pub fn fill_to(&self, color: LinearRgba) -> Action {
+        self.action(PropertyId::Fill, Value::Color(color))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,5 +322,33 @@ mod tests {
         s.add(Circle::new(1.0));
         s.play(foreign.move_to((5.0, 0.0)), 1.0);
         assert!(s.build().tracks.is_empty());
+    }
+
+    #[test]
+    fn every_action_lands_on_its_property() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(10.0));
+        s.play(dot.scale_to(2.0), 1.0);
+        s.play(dot.scale_xy_to((3.0, 0.5)), 1.0);
+        s.play(dot.rotate_to(std::f64::consts::TAU), 1.0);
+        s.play(dot.fade_to(0.25), 1.0);
+        s.play(dot.fill_to(palette::red()), 1.0);
+        let tl = s.build();
+        let mid_scale = tl.evaluate(1.0).nodes[0].props.scale;
+        assert_eq!(mid_scale, DVec2::splat(2.0));
+        let end = tl.evaluate(tl.duration).nodes[0].props;
+        assert_eq!(end.scale, DVec2::new(3.0, 0.5));
+        assert_eq!(end.rotation, std::f64::consts::TAU);
+        assert_eq!(end.opacity, 0.25);
+        assert_eq!(end.fill, palette::red());
+    }
+
+    #[test]
+    fn fade_target_is_clamped() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(10.0));
+        assert_eq!(dot.fade_to(3.0).target, Value::Scalar(1.0));
+        s.play(dot.fade_to(-1.0), 1.0);
+        assert_eq!(s.build().evaluate(1.0).nodes[0].props.opacity, 0.0);
     }
 }
