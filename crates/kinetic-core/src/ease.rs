@@ -131,6 +131,63 @@ pub fn in_out_quint(u: f64) -> f64 {
     finish(u, |u| in_out_of(quint, u))
 }
 
+fn sine(u: f64) -> f64 {
+    1.0 - (u * std::f64::consts::FRAC_PI_2).cos()
+}
+
+fn expo(u: f64) -> f64 {
+    (10.0 * u - 10.0).exp2()
+}
+
+fn circ(u: f64) -> f64 {
+    1.0 - (1.0 - u * u).max(0.0).sqrt()
+}
+
+/// Accelerates from rest along a quarter sine wave; the softest start.
+pub fn in_sine(u: f64) -> f64 {
+    finish(u, sine)
+}
+
+/// Decelerates along a quarter sine wave; the softest stop.
+pub fn out_sine(u: f64) -> f64 {
+    finish(u, |u| out_of(sine, u))
+}
+
+/// Half a cosine wave: soft at both ends.
+pub fn in_out_sine(u: f64) -> f64 {
+    finish(u, |u| in_out_of(sine, u))
+}
+
+/// Almost still, then launches; doubles its speed every tenth of the way.
+pub fn in_expo(u: f64) -> f64 {
+    finish(u, expo)
+}
+
+/// Arrives almost at once, then creeps the last few percent.
+pub fn out_expo(u: f64) -> f64 {
+    finish(u, |u| out_of(expo, u))
+}
+
+/// Exponential in, exponential out: a snap through the middle.
+pub fn in_out_expo(u: f64) -> f64 {
+    finish(u, |u| in_out_of(expo, u))
+}
+
+/// Follows a quarter circle: slow start, then nearly vertical.
+pub fn in_circ(u: f64) -> f64 {
+    finish(u, circ)
+}
+
+/// Nearly vertical start, then a slow quarter-circle stop.
+pub fn out_circ(u: f64) -> f64 {
+    finish(u, |u| out_of(circ, u))
+}
+
+/// Quarter circle in, quarter circle out.
+pub fn in_out_circ(u: f64) -> f64 {
+    finish(u, |u| in_out_of(circ, u))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,6 +208,15 @@ mod tests {
         ("in_quint", in_quint),
         ("out_quint", out_quint),
         ("in_out_quint", in_out_quint),
+        ("in_sine", in_sine),
+        ("out_sine", out_sine),
+        ("in_out_sine", in_out_sine),
+        ("in_expo", in_expo),
+        ("out_expo", out_expo),
+        ("in_out_expo", in_out_expo),
+        ("in_circ", in_circ),
+        ("out_circ", out_circ),
+        ("in_out_circ", in_out_circ),
     ];
 
     /// Easings that never move backwards.
@@ -168,6 +234,15 @@ mod tests {
         ("in_quint", in_quint),
         ("out_quint", out_quint),
         ("in_out_quint", in_out_quint),
+        ("in_sine", in_sine),
+        ("out_sine", out_sine),
+        ("in_out_sine", in_out_sine),
+        ("in_expo", in_expo),
+        ("out_expo", out_expo),
+        ("in_out_expo", in_out_expo),
+        ("in_circ", in_circ),
+        ("out_circ", out_circ),
+        ("in_out_circ", in_out_circ),
     ];
 
     #[test]
@@ -189,11 +264,14 @@ mod tests {
     #[test]
     fn continuous_on_a_fine_grid() {
         // No easing here is steeper than 30, so samples 1/10000 apart differ by at most 3e-3.
+        // Circ curves are the exception: they go vertical at their ends like a square root,
+        // continuous but unbounded in slope, so a step of h can move them by sqrt(2h).
         let n = 10_000;
         for (name, f) in ALL {
+            let bound = if name.contains("circ") { 0.015 } else { 3e-3 };
             for i in 0..n {
                 let (a, b) = (f(i as f64 / n as f64), f((i + 1) as f64 / n as f64));
-                assert!((b - a).abs() <= 3e-3, "{name} jumps between samples {i} and {}", i + 1);
+                assert!((b - a).abs() <= bound, "{name} jumps between samples {i} and {}", i + 1);
             }
         }
     }
@@ -230,6 +308,18 @@ mod tests {
         assert_eq!(out_quad(0.5), 0.75);
         for f in [in_out_quad, in_out_quart, in_out_quint] {
             assert_eq!(f(0.5), 0.5);
+        }
+    }
+
+    #[test]
+    fn sine_expo_and_circ_known_values() {
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
+        assert!(close(in_sine(0.5), 1.0 - std::f64::consts::FRAC_1_SQRT_2));
+        assert!(close(out_sine(0.5), std::f64::consts::FRAC_1_SQRT_2));
+        assert!(close(in_expo(0.5), 0.03125));
+        assert!(close(in_circ(0.5), 1.0 - 0.75_f64.sqrt()));
+        for f in [in_out_sine, in_out_expo, in_out_circ] {
+            assert!(close(f(0.5), 0.5));
         }
     }
 }
