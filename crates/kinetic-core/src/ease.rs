@@ -208,6 +208,35 @@ pub fn in_out_back(u: f64) -> f64 {
     })
 }
 
+const ELASTIC_C4: f64 = std::f64::consts::TAU / 3.0;
+const ELASTIC_C5: f64 = std::f64::consts::TAU / 4.5;
+
+fn elastic(u: f64) -> f64 {
+    -(10.0 * u - 10.0).exp2() * ((10.0 * u - 10.75) * ELASTIC_C4).sin()
+}
+
+/// Winds up with growing wobbles, then snaps away.
+pub fn in_elastic(u: f64) -> f64 {
+    finish(u, elastic)
+}
+
+/// Snaps past the target and rings down like a plucked string.
+pub fn out_elastic(u: f64) -> f64 {
+    finish(u, |u| out_of(elastic, u))
+}
+
+/// Wobbles up, snaps through the middle, rings down.
+pub fn in_out_elastic(u: f64) -> f64 {
+    finish(u, |u| {
+        let wave = ((20.0 * u - 11.125) * ELASTIC_C5).sin();
+        if u < 0.5 {
+            -(20.0 * u - 10.0).exp2() * wave / 2.0
+        } else {
+            (-20.0 * u + 10.0).exp2() * wave / 2.0 + 1.0
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +268,9 @@ mod tests {
         ("in_out_circ", in_out_circ),
         ("in_back", in_back),
         ("in_out_back", in_out_back),
+        ("in_elastic", in_elastic),
+        ("out_elastic", out_elastic),
+        ("in_out_elastic", in_out_elastic),
     ];
 
     /// Easings that never move backwards.
@@ -352,5 +384,13 @@ mod tests {
         let samples: Vec<f64> = (0..=1000).map(|i| in_out_back(f64::from(i) / 1000.0)).collect();
         assert!(samples.iter().any(|&v| v < 0.0) && samples.iter().any(|&v| v > 1.0));
         assert_eq!(in_out_back(0.5), 0.5);
+    }
+
+    #[test]
+    fn elastic_easings_ring_past_their_ends() {
+        let sample = |f: EaseFn| (0..=1000).map(move |i| f(f64::from(i) / 1000.0));
+        assert!(sample(out_elastic).any(|v| v > 1.3), "out_elastic should overshoot");
+        assert!(sample(in_elastic).any(|v| v < -0.3), "in_elastic should undershoot");
+        assert!((in_out_elastic(0.5) - 0.5).abs() < 1e-12);
     }
 }
