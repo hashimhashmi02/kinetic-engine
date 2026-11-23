@@ -5,7 +5,7 @@
 //! ([`LinearRgba::to_srgba8`]).
 
 /// Linear-light RGBA with premultiplied alpha.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LinearRgba {
     pub r: f32,
     pub g: f32,
