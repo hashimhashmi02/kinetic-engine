@@ -59,6 +59,11 @@ impl Segment {
 
     /// The segment's value at absolute time `t`.
     pub fn value_at(&self, t: f64) -> Value {
+        // Compare against the end in absolute time: `t - start` can round to a hair under
+        // the duration exactly at the end, which would leave the value short of `to`.
+        if t >= self.end() {
+            return self.to;
+        }
         self.from.lerp(&self.to, self.curve.progress(t - self.start, self.duration))
     }
 }
@@ -174,6 +179,15 @@ mod tests {
         let mut t = track();
         t.push(0.0, spring.settle_time(), Value::Scalar(1.0), Curve::Spring(spring));
         assert_eq!(t.value_at(spring.settle_time()), Value::Scalar(1.0));
+    }
+
+    #[test]
+    fn reaches_its_target_exactly_at_its_end_despite_rounding() {
+        // 0.1 + 0.2 is not 0.3 in floating point; the end must still be exact.
+        let mut tr = Track::new(NodeId(0), PropertyId::Rotation, Value::Scalar(0.0));
+        tr.push(0.1, 0.2, Value::Scalar(-65.129_279_724_760_64), Curve::Ease(Ease::InOutCubic));
+        let end = tr.segments[0].end();
+        assert_eq!(tr.value_at(end), Value::Scalar(-65.129_279_724_760_64));
     }
 
     #[test]
