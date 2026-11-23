@@ -15,6 +15,15 @@ pub struct CubicBezier {
 }
 
 impl CubicBezier {
+    /// CSS `ease`: a quick start and a long, soft finish.
+    pub const EASE: Self = Self { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1.0 };
+    /// CSS `ease-in`.
+    pub const EASE_IN: Self = Self { x1: 0.42, y1: 0.0, x2: 1.0, y2: 1.0 };
+    /// CSS `ease-out`.
+    pub const EASE_OUT: Self = Self { x1: 0.0, y1: 0.0, x2: 0.58, y2: 1.0 };
+    /// CSS `ease-in-out`.
+    pub const EASE_IN_OUT: Self = Self { x1: 0.42, y1: 0.0, x2: 0.58, y2: 1.0 };
+
     /// A curve through control points `(x1, y1)` and `(x2, y2)`.
     pub fn new(x1: f64, y1: f64, x2: f64, y2: f64) -> Self {
         Self { x1: x1.clamp(0.0, 1.0), y1, x2: x2.clamp(0.0, 1.0), y2 }
@@ -121,5 +130,18 @@ mod tests {
     #[test]
     fn control_x_is_clamped_so_time_moves_forward() {
         assert_eq!(CubicBezier::new(-1.0, 0.0, 2.0, 1.0).points(), [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn css_presets_match_browser_values() {
+        // Reference values as computed by browsers for these timing functions.
+        assert!((CubicBezier::EASE.apply(0.5) - 0.802_403_4).abs() < 1e-6);
+        assert!((CubicBezier::EASE_IN_OUT.apply(0.5) - 0.5).abs() < 1e-9);
+        // ease-in and ease-out are mirror images.
+        for i in 1..20 {
+            let u = f64::from(i) / 20.0;
+            let mirrored = 1.0 - CubicBezier::EASE_OUT.apply(1.0 - u);
+            assert!((CubicBezier::EASE_IN.apply(u) - mirrored).abs() < 1e-6, "at {u}");
+        }
     }
 }

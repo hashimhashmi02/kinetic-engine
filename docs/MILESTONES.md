@@ -35,7 +35,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [ ] `Handle<T>` and actions: `move_to`, `scale_to`, `rotate_to`, `fade_to`, `fill_to`
 - [ ] `parallel`, `sequence`, `stagger`
 - [x] Full easing set (sine, quad, cubic, quart, expo, back, elastic, bounce; in, out, in-out)
-- [ ] `CubicBezier` easing
+- [x] `CubicBezier` easing
 - [ ] Closed-form spring: three damping regimes, initial velocity, settle time
 - [ ] Property tests: endpoints, continuity, evaluate purity and order independence
 - [ ] `serde` round trip for `Timeline`
