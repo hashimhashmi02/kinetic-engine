@@ -188,6 +188,26 @@ pub fn in_out_circ(u: f64) -> f64 {
     finish(u, |u| in_out_of(circ, u))
 }
 
+/// Pulls back about 10% before setting off.
+pub fn in_back(u: f64) -> f64 {
+    finish(u, back)
+}
+
+/// Pulls back, sets off, overshoots and settles. The overshoot is a little larger than
+/// [`out_back`]'s so it still reads at half the duration.
+pub fn in_out_back(u: f64) -> f64 {
+    const C2: f64 = BACK_C1 * 1.525;
+    finish(u, |u| {
+        if u < 0.5 {
+            let v = 2.0 * u;
+            v * v * ((C2 + 1.0) * v - C2) / 2.0
+        } else {
+            let v = 2.0 * u - 2.0;
+            (v * v * ((C2 + 1.0) * v + C2) + 2.0) / 2.0
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,6 +237,8 @@ mod tests {
         ("in_circ", in_circ),
         ("out_circ", out_circ),
         ("in_out_circ", in_out_circ),
+        ("in_back", in_back),
+        ("in_out_back", in_out_back),
     ];
 
     /// Easings that never move backwards.
@@ -321,5 +343,14 @@ mod tests {
         for f in [in_out_sine, in_out_expo, in_out_circ] {
             assert!(close(f(0.5), 0.5));
         }
+    }
+
+    #[test]
+    fn back_easings_undershoot_and_overshoot() {
+        let min = (0..=1000).map(|i| in_back(f64::from(i) / 1000.0)).fold(f64::MAX, f64::min);
+        assert!((min + 0.1).abs() < 0.005, "in_back dipped to {min}");
+        let samples: Vec<f64> = (0..=1000).map(|i| in_out_back(f64::from(i) / 1000.0)).collect();
+        assert!(samples.iter().any(|&v| v < 0.0) && samples.iter().any(|&v| v > 1.0));
+        assert_eq!(in_out_back(0.5), 0.5);
     }
 }
