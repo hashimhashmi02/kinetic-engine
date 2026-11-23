@@ -28,8 +28,10 @@ impl AdapterChoice {
 pub struct Gpu {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    /// The adapter the device came from; needed to configure a window surface.
+    pub adapter: wgpu::Adapter,
     /// Adapter name and backend, for logs and `kinetic doctor`.
-    pub adapter: String,
+    pub adapter_name: String,
 }
 
 impl Gpu {
@@ -64,6 +66,11 @@ impl Gpu {
             })
             .await
             .map_err(|e| RenderError::Device(e.to_string()))?;
-        Ok(Self { device, queue, adapter: format!("{} ({:?})", info.name, info.backend) })
+        Ok(Self {
+            device,
+            queue,
+            adapter,
+            adapter_name: format!("{} ({:?})", info.name, info.backend),
+        })
     }
 }
