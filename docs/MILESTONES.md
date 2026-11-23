@@ -30,7 +30,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 ## M2 — Timeline and animation (`v0.2.0`)
 
 - [x] `Value`, `PropertyId`, `NodeId`, `NodeDef`
-- [ ] `Track`, `Segment`, `Curve`; `Timeline::evaluate(t) -> FrameState`
+- [x] `Track`, `Segment`, `Curve`; `Timeline::evaluate(t) -> FrameState`
 - [ ] `Scene` builder: `add`, cursor, `play`, `wait`
 - [ ] `Handle<T>` and actions: `move_to`, `scale_to`, `rotate_to`, `fade_to`, `fill_to`
 - [ ] `parallel`, `sequence`, `stagger`
