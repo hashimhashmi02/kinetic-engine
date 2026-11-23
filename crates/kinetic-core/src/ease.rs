@@ -74,6 +74,63 @@ pub fn out_back(u: f64) -> f64 {
     finish(u, |u| out_of(back, u))
 }
 
+fn quad(u: f64) -> f64 {
+    u * u
+}
+
+fn quart(u: f64) -> f64 {
+    u * u * u * u
+}
+
+fn quint(u: f64) -> f64 {
+    u * u * u * u * u
+}
+
+/// Accelerates from rest, gently.
+pub fn in_quad(u: f64) -> f64 {
+    finish(u, quad)
+}
+
+/// Decelerates to a stop, gently.
+pub fn out_quad(u: f64) -> f64 {
+    finish(u, |u| out_of(quad, u))
+}
+
+/// Gentle acceleration, then gentle deceleration.
+pub fn in_out_quad(u: f64) -> f64 {
+    finish(u, |u| in_out_of(quad, u))
+}
+
+/// Accelerates from rest, sharply.
+pub fn in_quart(u: f64) -> f64 {
+    finish(u, quart)
+}
+
+/// Decelerates to a stop, sharply.
+pub fn out_quart(u: f64) -> f64 {
+    finish(u, |u| out_of(quart, u))
+}
+
+/// Sharp acceleration, then sharp deceleration.
+pub fn in_out_quart(u: f64) -> f64 {
+    finish(u, |u| in_out_of(quart, u))
+}
+
+/// Accelerates from rest, very sharply.
+pub fn in_quint(u: f64) -> f64 {
+    finish(u, quint)
+}
+
+/// Decelerates to a stop, very sharply.
+pub fn out_quint(u: f64) -> f64 {
+    finish(u, |u| out_of(quint, u))
+}
+
+/// Very sharp acceleration, then very sharp deceleration.
+pub fn in_out_quint(u: f64) -> f64 {
+    finish(u, |u| in_out_of(quint, u))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -85,6 +142,15 @@ mod tests {
         ("out_cubic", out_cubic),
         ("in_out_cubic", in_out_cubic),
         ("out_back", out_back),
+        ("in_quad", in_quad),
+        ("out_quad", out_quad),
+        ("in_out_quad", in_out_quad),
+        ("in_quart", in_quart),
+        ("out_quart", out_quart),
+        ("in_out_quart", in_out_quart),
+        ("in_quint", in_quint),
+        ("out_quint", out_quint),
+        ("in_out_quint", in_out_quint),
     ];
 
     /// Easings that never move backwards.
@@ -93,6 +159,15 @@ mod tests {
         ("in_cubic", in_cubic),
         ("out_cubic", out_cubic),
         ("in_out_cubic", in_out_cubic),
+        ("in_quad", in_quad),
+        ("out_quad", out_quad),
+        ("in_out_quad", in_out_quad),
+        ("in_quart", in_quart),
+        ("out_quart", out_quart),
+        ("in_out_quart", in_out_quart),
+        ("in_quint", in_quint),
+        ("out_quint", out_quint),
+        ("in_out_quint", in_out_quint),
     ];
 
     #[test]
@@ -145,5 +220,16 @@ mod tests {
     fn out_back_overshoots_by_about_ten_percent() {
         let peak = (0..=1000).map(|i| out_back(f64::from(i) / 1000.0)).fold(f64::MIN, f64::max);
         assert!((peak - 1.1).abs() < 0.005, "peak was {peak}");
+    }
+
+    #[test]
+    fn polynomial_families_hit_their_powers_of_a_half() {
+        assert_eq!(in_quad(0.5), 0.25);
+        assert_eq!(in_quart(0.5), 0.0625);
+        assert_eq!(in_quint(0.5), 0.03125);
+        assert_eq!(out_quad(0.5), 0.75);
+        for f in [in_out_quad, in_out_quart, in_out_quint] {
+            assert_eq!(f(0.5), 0.5);
+        }
     }
 }
