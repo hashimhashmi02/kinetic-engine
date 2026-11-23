@@ -135,6 +135,62 @@ impl Spring {
     }
 }
 
+/// How close to the target counts as settled, as a share of the full distance.
+pub const SETTLE_TOLERANCE: f64 = 1e-3;
+
+/// Longest a spring may take, in seconds. An undamped spring would ring forever; it is
+/// cut off here and snapped to its target.
+pub const MAX_SETTLE: f64 = 60.0;
+
+impl Spring {
+    /// Time in seconds after which the spring stays within [`SETTLE_TOLERANCE`] of its
+    /// target. This is the spring's duration on a timeline.
+    ///
+    /// It comes from the decay envelope of the closed-form solution, so it is an upper
+    /// bound: the spring is guaranteed to be settled by then, and is usually settled a
+    /// little before.
+    pub fn settle_time(&self) -> f64 {
+        // Aim slightly inside the band: at the exact bound the deviation equals the
+        // tolerance, and rounding could leave the spring a hair outside it.
+        let eps = SETTLE_TOLERANCE * 0.99;
+        let v0 = self.velocity;
+        let t = match self.solution() {
+            Solution::Under { a, b, .. } => {
+                let amplitude = (1.0 + b * b).sqrt();
+                if a <= 0.0 {
+                    f64::INFINITY
+                } else {
+                    (amplitude / eps).ln() / a
+                }
+            }
+            Solution::Critical { w0, c } => {
+                // |x - 1| <= e^(-w0 t) (1 + |c| t); the polynomial factor makes this
+                // implicit, and a few fixed-point steps from the pure exponential solve it.
+                let mut t = (1.0 / eps).ln() / w0;
+                for _ in 0..32 {
+                    t = ((1.0 + c.abs() * t) / eps).ln() / w0;
+                }
+                t
+            }
+            Solution::Over { r1, r2 } => {
+                // Both terms decay at least as fast as the slow root r1.
+                let weight = ((r2 + v0).abs() + (r1 + v0).abs()) / (r1 - r2);
+                (weight / eps).ln() / -r1
+            }
+        };
+        t.clamp(0.0, MAX_SETTLE)
+    }
+
+    /// Progress at time `t`: the spring's value until it settles, then exactly 1.
+    pub fn progress(&self, t: f64) -> f64 {
+        if t >= self.settle_time() {
+            1.0
+        } else {
+            self.value(t)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,5 +258,44 @@ mod tests {
         assert!(s.mass > 0.0 && s.stiffness > 0.0);
         assert_eq!(s.damping, 0.0);
         assert!(s.value(0.5).is_finite());
+    }
+
+    #[test]
+    fn settled_after_settle_time() {
+        for s in springs() {
+            let end = s.settle_time();
+            assert!(end > 0.0 && end < MAX_SETTLE, "{s:?} settles at {end}");
+            for i in 0..400 {
+                let t = end + f64::from(i) * 0.01;
+                assert!((s.value(t) - 1.0).abs() <= SETTLE_TOLERANCE, "{s:?} at {t}");
+            }
+        }
+    }
+
+    #[test]
+    fn settle_time_is_not_wildly_pessimistic() {
+        // The envelope bound should land within a couple of ringing periods of the real
+        // moment the spring enters the tolerance band for good.
+        for s in springs() {
+            let end = s.settle_time();
+            let last_outside = (0..=(end * 1000.0) as u32)
+                .map(|i| f64::from(i) / 1000.0)
+                .rfind(|&t| (s.value(t) - 1.0).abs() > SETTLE_TOLERANCE)
+                .unwrap_or(0.0);
+            assert!(end - last_outside < 0.8, "{s:?}: bound {end}, real {last_outside}");
+        }
+    }
+
+    #[test]
+    fn progress_snaps_to_one_exactly() {
+        let s = spring();
+        assert_eq!(s.progress(s.settle_time()), 1.0);
+        assert_eq!(s.progress(100.0), 1.0);
+        assert_eq!(s.progress(0.0), 0.0);
+    }
+
+    #[test]
+    fn undamped_spring_is_cut_off() {
+        assert_eq!(spring().damping(0.0).settle_time(), MAX_SETTLE);
     }
 }
