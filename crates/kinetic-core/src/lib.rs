@@ -3,10 +3,12 @@
 //! Everything in this crate is deterministic: the same inputs always produce the same
 //! outputs, with no dependence on the wall clock, randomness or iteration order.
 
+pub mod bezier;
 pub mod color;
 pub mod ease;
 pub mod lerp;
 
+pub use bezier::CubicBezier;
 pub use color::LinearRgba;
 pub use ease::Ease;
 pub use glam::DVec2;
