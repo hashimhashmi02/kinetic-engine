@@ -34,7 +34,7 @@ impl Curve {
         match self {
             Self::Ease(ease) => ease.apply(local / duration),
             Self::Bezier(bezier) => bezier.apply(local / duration),
-            Self::Spring(spring) => spring.value(local),
+            Self::Spring(spring) => spring.progress(local),
         }
     }
 }

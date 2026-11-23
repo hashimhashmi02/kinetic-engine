@@ -181,12 +181,20 @@ impl Spring {
         t.clamp(0.0, MAX_SETTLE)
     }
 
-    /// Progress at time `t`: the spring's value until it settles, then exactly 1.
+    /// Progress at time `t`, reaching exactly 1 at [`Spring::settle_time`] and holding
+    /// there.
+    ///
+    /// The raw spring is still a tiny distance (under [`SETTLE_TOLERANCE`]) from its target
+    /// when it settles. Rather than snap that gap shut, a linear correction closes it over
+    /// the whole duration, so the motion has no step at the end.
     pub fn progress(&self, t: f64) -> f64 {
-        if t >= self.settle_time() {
+        let end = self.settle_time();
+        if t >= end {
             1.0
+        } else if t <= 0.0 {
+            0.0
         } else {
-            self.value(t)
+            self.value(t) + (t / end) * (1.0 - self.value(end))
         }
     }
 }
@@ -361,6 +369,15 @@ mod tests {
                 assert!((below.value(t) - exact.value(t)).abs() < 1e-3);
                 assert!((above.value(t) - exact.value(t)).abs() < 1e-3);
             }
+        }
+    }
+
+    #[test]
+    fn progress_has_no_step_at_the_end() {
+        for s in springs() {
+            let end = s.settle_time();
+            assert!((s.progress(end - 1e-9) - 1.0).abs() < 1e-6, "{s:?}");
+            assert!((s.progress(end * 0.5) - s.value(end * 0.5)).abs() <= SETTLE_TOLERANCE);
         }
     }
 }
