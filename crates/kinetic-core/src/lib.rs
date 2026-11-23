@@ -9,6 +9,7 @@ pub mod ease;
 pub mod lerp;
 pub mod node;
 pub mod spring;
+pub mod track;
 pub mod value;
 
 pub use bezier::CubicBezier;
@@ -18,4 +19,5 @@ pub use glam::DVec2;
 pub use lerp::Lerp;
 pub use node::{Circle, Node, NodeDef, NodeId, PropertyId, Props, Rect, Shape};
 pub use spring::{spring, Spring};
+pub use track::{Curve, Segment, Track};
 pub use value::Value;
