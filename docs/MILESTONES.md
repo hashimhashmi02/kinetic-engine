@@ -40,7 +40,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Property tests: endpoints, continuity, evaluate purity and order independence
 - [x] `serde` round trip for `Timeline`
 - [ ] Editor previews a `Timeline` built from an in-process scene function
-- [ ] `scenes/hello` example
+- [x] `scenes/hello` example
 
 ## M3 — Hot reload (`v0.3.0`)
 

@@ -1,0 +1,13 @@
+[package]
+name = "hello"
+description = "The first Kinetic scene: shapes, easings, a spring and a stagger."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+kinetic-core = { path = "../../crates/kinetic-core" }
