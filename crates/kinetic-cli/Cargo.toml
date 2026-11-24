@@ -16,3 +16,6 @@ kinetic-editor = { version = "0.0.0", path = "../kinetic-editor" }
 [[bin]]
 name = "kinetic"
 path = "src/main.rs"
+
+[dev-dependencies]
+kinetic-reload = { path = "../kinetic-reload" }
