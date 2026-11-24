@@ -34,8 +34,9 @@ fn scene(s: &mut Scene) {
 | `kinetic-text` | Shaping, glyphs as paths |
 | `kinetic-render` | wgpu renderer and post-processing |
 | `kinetic-export` | Frames to ffmpeg |
+| `kinetic-reload` | Builds, loads and hot reloads scene crates |
 | `kinetic-editor` | Preview, timeline, inspector |
-| `kinetic-cli` | `kinetic preview`, `kinetic render` |
+| `kinetic-cli` | `kinetic new`, `kinetic preview` |
 
 ## Building
 
@@ -43,7 +44,16 @@ Requires stable Rust and, for export, `ffmpeg` on `PATH`.
 
 ```bash
 cargo test --workspace
-cargo run -p kinetic-cli -- preview    # plays scenes/hello
+cargo run -p kinetic-cli -- preview scenes/hello
+```
+
+The preview rebuilds and reloads the scene every time you save one of its files, and keeps the playhead where it was. A broken build shows the compiler's errors over the preview while the last good version keeps playing.
+
+Start a scene of your own:
+
+```bash
+cargo run -p kinetic-cli -- new scenes/my-scene
+cargo run -p kinetic-cli -- preview scenes/my-scene
 ```
 
 Timings are written as seconds (`0.6`), seconds with an easing (`(0.6, Ease::OutBack)`), seconds with a cubic bezier (`(0.6, CubicBezier::EASE)`), or a spring, which lasts until it settles.

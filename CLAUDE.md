@@ -8,7 +8,8 @@ Native GPU motion engine in Rust. Scene code compiles to a timeline; every frame
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo run -p kinetic-cli -- preview scenes/hello      # from M3
+cargo run -p kinetic-cli -- preview scenes/hello      # hot reloads on save
+cargo run -p kinetic-cli -- new scenes/<name>         # new scene crate
 cargo run -p kinetic-cli -- render scenes/hello -o out/hello.mp4   # from M6
 pnpm --dir site dev                                    # from M9
 ```
@@ -17,7 +18,7 @@ pnpm --dir site dev                                    # from M9
 
 1. **Determinism is the product.** Evaluation code never reads the wall clock, uses unseeded randomness, iterates a `HashMap`, or depends on thread timing. `evaluate(t)` twice gives identical output.
 2. **`kinetic-core` stays pure.** No GPU, window, file or process dependencies. Anything that needs IO lives in a higher crate.
-3. **Dependencies point one way:** core <- vector <- text; core, vector <- render <- export, editor <- cli. Never add a reverse edge.
+3. **Dependencies point one way:** core <- vector <- text; core, vector <- render <- export, editor <- cli; core <- reload <- editor. Scene crates depend on core only. Never add a reverse edge.
 4. **Golden images are never edited by hand.** They change only through `cargo xtask bless`, and the commit message says why the pixels changed.
 5. **Verify before every commit:** fmt, clippy with `-D warnings`, tests. Use the `verify` skill. A red check is fixed before anything else.
 6. **No `unwrap`/`expect` on runtime input** (files, user scenes, GPU, ffmpeg). Return errors with context. They are fine in tests and for proven invariants with a comment.
