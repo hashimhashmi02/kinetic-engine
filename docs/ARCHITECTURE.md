@@ -11,7 +11,8 @@ kinetic-text      cosmic-text shaping, glyph outlines to paths
 
 kinetic-render    wgpu renderer, MSAA, post stack        (core, vector, text)
 kinetic-export    offscreen frames to ffmpeg             (render)
-kinetic-editor    winit + egui preview, hot reload       (render)
+kinetic-reload    cargo builds, scene library loading, file watching   (core)
+kinetic-editor    winit + egui preview                   (render, reload)
 kinetic-cli       preview / render / new / doctor        (editor, export)
 ```
 
@@ -117,11 +118,16 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 ## Hot reload
 
-- A scene crate is a `cdylib` depending on `kinetic-core` and exporting, via a macro:
-  `extern "C" fn kinetic_scene_build(out: *mut ByteBuf) -> u32` which runs the scene, serialises the `Timeline`, and hands back bytes plus a free function.
-- The editor watches the scene's `src/` with `notify`, debounces, runs `cargo build -p <scene>`, copies the built library to a unique temp path (Windows keeps loaded DLLs locked), loads it with `libloading`, calls the entry, copies the bytes, frees them, and deserialises.
-- A wire-format version constant is checked first, so a stale scene built against an older core fails with a clear message.
-- Build errors are shown as an overlay; the previous timeline keeps playing. The playhead is clamped to the new duration.
+Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its tests and other crates can still link it), depending only on `kinetic-core`.
+
+- **Exports.** `kinetic_scene!(scene)` generates three C functions: `kinetic_scene_abi_version() -> u32`, `kinetic_scene_build(*mut SceneBytes) -> u32` and `kinetic_scene_free(SceneBytes)`. Build runs the scene inside `catch_unwind`, so a panic comes back as a status code and message instead of unwinding into the editor. The library frees its own allocation.
+- **Wire format.** `KNTC`, a little-endian format version, then the timeline as JSON with exact float parsing (`kinetic_core::wire`). The editor checks the ABI version before calling anything and the format version before decoding, and names both numbers when they differ.
+- **Building** (`kinetic-reload`). `cargo build --lib --message-format=json --manifest-path <scene>/Cargo.toml` into its own target directory under the system temp folder, so a scene build never waits on, or invalidates, the build of the editor running it. The cdylib comes from the artifact messages; on failure the compiler's rendered errors come back as text.
+- **Loading.** The built library is copied to a uniquely named scratch file and the copy is loaded (Windows locks loaded libraries; cargo must be able to overwrite the original). The bytes are copied out, freed by the library, the library is unloaded and the copy deleted. Nothing returned points into the library.
+- **Watching.** A debounced (150 ms) watcher on `src/` and `Cargo.toml` queues rebuilds; one worker thread drains the queue, so saves during a build cause one more build. Events (`Building`, `Loaded`, `Failed`) reach the editor through the winit event loop.
+- **Editor.** Building shows a spinner; a failed build shows the compiler output while the previous timeline keeps playing; a reload shows how long it took. The playhead and play state are kept, clamped if the timeline got shorter.
+- **Measured:** first build of `scenes/hello` about 22 s (compiling dependencies), then 0.3 to 0.7 s from save to new timeline.
+- `kinetic new <dir>` writes a starter scene crate: a relative path dependency when inside a checkout of this repository (joining the workspace under `scenes/`), otherwise a git dependency and its own `[workspace]`.
 
 ## Export
 
@@ -144,6 +150,13 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- The preview window presents through DX12 on Windows unless `WGPU_BACKEND` says otherwise. It was changed while chasing a whole-screen flicker that later turned out to come from the machine's graphics, not the preview; DX12 stays as the Windows default because it is the native path.
+- The preview window opens at 70% of the screen, 16:9 and centred. A fixed 1280x720 logical size filled a 150%-scaled 1920x1080 laptop screen and hid the title bar.
+- `kinetic preview` needs a scene directory; the hello scene is no longer compiled into the binary.
+- A scene library is unloaded as soon as its bytes are copied out; nothing the editor keeps points into it.
+- Scene builds use their own target directory (under the system temp folder) instead of the workspace's, so they never contend with the build running the editor.
+- The wire format is JSON behind a `KNTC` + version header rather than a binary format: readable when debugging, exact for floats with serde_json's `float_roundtrip`, and fast enough for timelines of this size.
+- Hot reload code lives in its own crate, `kinetic-reload`, depending only on `kinetic-core`; the editor depends on it.
 - Until hot reload (M3), `kinetic preview` plays `scenes/hello` compiled into the binary; scenes depend only on `kinetic-core` so they can become dylibs unchanged.
 - The hot reload wire format must round-trip `f64` exactly; serde_json does so only with its `float_roundtrip` feature.
 - Spring progress closes its last sub-0.1% gap with a linear correction over the whole duration instead of snapping at the settle time, so a change that starts there does not see a step.
