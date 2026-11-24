@@ -51,7 +51,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Build error overlay; previous timeline keeps playing
 - [x] Playhead and play state preserved across reload
 - [x] `kinetic preview scenes/hello` end to end; reload under about two seconds
-- [ ] `kinetic new <name>` scaffolds a scene crate
+- [x] `kinetic new <name>` scaffolds a scene crate
 
 ## M4 — Paths and morphing (`v0.4.0`)
 
