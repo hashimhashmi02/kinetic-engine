@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 kinetic-core = { version = "0.0.0", path = "../kinetic-core" }
 libloading = "0.9.1"
+notify-debouncer-mini = "0.8.0"
 serde_json = "1.0.154"
 
 [dev-dependencies]

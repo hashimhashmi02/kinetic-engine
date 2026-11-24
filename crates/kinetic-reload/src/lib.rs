@@ -2,6 +2,8 @@
 
 mod build;
 mod load;
+mod watch;
 
 pub use build::{BuildError, SceneCrate};
 pub use load::{clean_scratch, load, LoadError};
+pub use watch::{ReloadEvent, Reloader, WatchError, DEBOUNCE};

@@ -47,7 +47,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `kinetic_scene!` macro and C entry point returning serialised timeline bytes
 - [x] Wire-format version check
 - [x] Loader: copy library to temp, `libloading`, deserialise, unload safely
-- [ ] File watcher with debounce, background `cargo build`
+- [x] File watcher with debounce, background `cargo build`
 - [ ] Build error overlay; previous timeline keeps playing
 - [ ] Playhead and play state preserved across reload
 - [ ] `kinetic preview scenes/hello` end to end; reload under about two seconds
