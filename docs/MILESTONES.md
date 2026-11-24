@@ -45,7 +45,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 ## M3 — Hot reload (`v0.3.0`)
 
 - [ ] `kinetic_scene!` macro and C entry point returning serialised timeline bytes
-- [ ] Wire-format version check
+- [x] Wire-format version check
 - [ ] Loader: copy library to temp, `libloading`, deserialise, unload safely
 - [ ] File watcher with debounce, background `cargo build`
 - [ ] Build error overlay; previous timeline keeps playing

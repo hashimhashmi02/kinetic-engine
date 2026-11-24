@@ -13,6 +13,7 @@ pub mod spring;
 pub mod timeline;
 pub mod track;
 pub mod value;
+pub mod wire;
 
 pub use bezier::CubicBezier;
 pub use color::LinearRgba;
