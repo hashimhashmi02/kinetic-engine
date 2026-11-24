@@ -48,7 +48,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Wire-format version check
 - [x] Loader: copy library to temp, `libloading`, deserialise, unload safely
 - [x] File watcher with debounce, background `cargo build`
-- [ ] Build error overlay; previous timeline keeps playing
+- [x] Build error overlay; previous timeline keeps playing
 - [ ] Playhead and play state preserved across reload
 - [ ] `kinetic preview scenes/hello` end to end; reload under about two seconds
 - [ ] `kinetic new <name>` scaffolds a scene crate

@@ -1,10 +1,11 @@
 //! Preview viewport, timeline scrubber and inspector.
 
 mod app;
+mod transport;
 
 use std::fmt;
 
-pub use app::run;
+pub use app::{run, run_scene};
 
 /// The preview window could not be opened or lost its graphics device.
 #[derive(Debug)]
@@ -13,6 +14,8 @@ pub enum EditorError {
     Window(String),
     /// The renderer could not be set up.
     Render(kinetic_render::RenderError),
+    /// The scene crate could not be opened or watched.
+    Scene(String),
 }
 
 impl fmt::Display for EditorError {
@@ -20,6 +23,7 @@ impl fmt::Display for EditorError {
         match self {
             Self::Window(why) => write!(f, "could not open the preview window: {why}"),
             Self::Render(error) => write!(f, "{error}"),
+            Self::Scene(why) => write!(f, "{why}"),
         }
     }
 }

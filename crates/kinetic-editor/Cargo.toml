@@ -15,6 +15,7 @@ egui = "0.37.0"
 egui-wgpu = "0.37.0"
 egui-winit = "0.37.0"
 kinetic-core = { version = "0.0.0", path = "../kinetic-core" }
+kinetic-reload = { version = "0.0.0", path = "../kinetic-reload" }
 kinetic-render = { version = "0.0.0", path = "../kinetic-render" }
 pollster = "1.0.1"
 winit = "0.30.13"

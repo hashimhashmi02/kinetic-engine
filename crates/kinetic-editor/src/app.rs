@@ -1,9 +1,13 @@
-//! The preview window: the renderer's output with an egui transport bar over it.
+//! The preview window: the renderer's output with an egui transport bar over it, playing
+//! either a fixed timeline or a scene crate that is rebuilt and reloaded on every save.
 
+use std::path::Path;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use kinetic_core::Timeline;
+use kinetic_core::color::palette;
+use kinetic_core::{DVec2, Timeline};
+use kinetic_reload::{ReloadEvent, Reloader, SceneCrate};
 use kinetic_render::wgpu;
 use kinetic_render::{AdapterChoice, Frame, Gpu, Renderer};
 use winit::application::ApplicationHandler;
@@ -12,27 +16,33 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
+use crate::transport::Transport;
 use crate::EditorError;
 
-/// Playback state. The wall clock only ever advances `time`; what is drawn depends on
-/// `time` alone.
+/// How long the "reloaded" note stays on screen.
+const TOAST: Duration = Duration::from_secs(2);
+
+/// What the reloader last reported.
 #[derive(Debug)]
-struct Transport {
-    time: f64,
-    duration: f64,
-    playing: bool,
-    last_tick: Instant,
+enum Status {
+    /// Nothing to report.
+    Ready,
+    /// A build is running.
+    Building,
+    /// The last build failed; the previous timeline, if any, keeps playing.
+    Failed(String),
+    /// A new timeline arrived.
+    Reloaded { took: Duration, at: Instant },
 }
 
-impl Transport {
-    fn tick(&mut self) {
-        let now = Instant::now();
-        if self.playing {
-            self.time += now.duration_since(self.last_tick).as_secs_f64();
-            // Loop. A zero-length scene simply stays on its only frame.
-            self.time = if self.duration > 0.0 { self.time % self.duration } else { 0.0 };
+impl Status {
+    /// Whether the overlay changes over time and needs frames even when paused.
+    fn animating(&self) -> bool {
+        match self {
+            Self::Building => true,
+            Self::Reloaded { at, .. } => at.elapsed() < TOAST,
+            _ => false,
         }
-        self.last_tick = now;
     }
 }
 
@@ -48,16 +58,24 @@ struct View {
 
 struct App {
     instance: wgpu::Instance,
-    timeline: Timeline,
+    title: String,
+    timeline: Option<Timeline>,
     transport: Transport,
+    status: Status,
     view: Option<View>,
     error: Option<EditorError>,
+    /// Kept alive so the scene keeps being watched; dropped when the window closes.
+    _reloader: Option<Reloader>,
 }
 
 impl View {
-    fn new(event_loop: &ActiveEventLoop, instance: &wgpu::Instance) -> Result<Self, EditorError> {
+    fn new(
+        event_loop: &ActiveEventLoop,
+        instance: &wgpu::Instance,
+        title: &str,
+    ) -> Result<Self, EditorError> {
         let attributes = Window::default_attributes()
-            .with_title("Kinetic")
+            .with_title(title)
             .with_inner_size(LogicalSize::new(1280.0, 720.0));
         let window = Arc::new(
             event_loop.create_window(attributes).map_err(|e| EditorError::Window(e.to_string()))?,
@@ -95,10 +113,10 @@ impl View {
     }
 }
 
-impl ApplicationHandler for App {
+impl ApplicationHandler<ReloadEvent> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.view.is_none() {
-            match View::new(event_loop, &self.instance) {
+            match View::new(event_loop, &self.instance, &self.title) {
                 Ok(view) => self.view = Some(view),
                 Err(error) => {
                     self.error = Some(error);
@@ -121,8 +139,8 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 self.transport.tick();
-                view.redraw(&self.timeline, &mut self.transport);
-                if self.transport.playing {
+                view.redraw(self.timeline.as_ref(), &mut self.transport, &self.status);
+                if self.transport.playing || self.status.animating() {
                     view.window.request_redraw();
                 }
             }
@@ -130,10 +148,86 @@ impl ApplicationHandler for App {
             _ => {}
         }
     }
+
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: ReloadEvent) {
+        match event {
+            ReloadEvent::Building => self.status = Status::Building,
+            ReloadEvent::Loaded { timeline, took } => {
+                eprintln!("kinetic: scene loaded in {:.2} s", took.as_secs_f64());
+                self.transport.retime(timeline.duration);
+                self.timeline = Some(*timeline);
+                self.status = Status::Reloaded { took, at: Instant::now() };
+            }
+            ReloadEvent::Failed(text) => {
+                eprintln!("kinetic: build failed, the previous version keeps playing\n{text}");
+                self.status = Status::Failed(text);
+            }
+        }
+        if let Some(view) = &self.view {
+            view.window.request_redraw();
+        }
+    }
+}
+
+/// Draws the reloader's status in the top-left corner.
+fn status_overlay(ctx: &egui::Context, status: &Status, has_timeline: bool) {
+    let area = egui::Area::new(egui::Id::unique("kinetic-status"))
+        .anchor(egui::Align2::LEFT_TOP, [12.0, 12.0])
+        .interactable(true);
+    match status {
+        Status::Ready => {}
+        Status::Building => {
+            area.show(ctx, |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(if has_timeline {
+                            "Rebuilding the scene"
+                        } else {
+                            "Building the scene. The first build compiles its dependencies \
+                             and can take a minute."
+                        });
+                    });
+                });
+            });
+        }
+        Status::Failed(text) => {
+            area.show(ctx, |ui| {
+                egui::Frame::popup(ui.style()).fill(egui::Color32::from_rgb(52, 16, 22)).show(
+                    ui,
+                    |ui| {
+                        ui.set_max_width(760.0);
+                        let headline = if has_timeline {
+                            "Build failed. The previous version keeps playing."
+                        } else {
+                            "Build failed."
+                        };
+                        ui.label(
+                            egui::RichText::new(headline)
+                                .strong()
+                                .color(egui::Color32::from_rgb(255, 176, 166)),
+                        );
+                        egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
+                            ui.label(egui::RichText::new(text).monospace());
+                        });
+                    },
+                );
+            });
+        }
+        Status::Reloaded { took, at } => {
+            if at.elapsed() < TOAST {
+                area.show(ctx, |ui| {
+                    egui::Frame::popup(ui.style()).show(ui, |ui| {
+                        ui.label(format!("Reloaded in {:.2} s", took.as_secs_f64()));
+                    });
+                });
+            }
+        }
+    }
 }
 
 impl View {
-    fn redraw(&mut self, timeline: &Timeline, transport: &mut Transport) {
+    fn redraw(&mut self, timeline: Option<&Timeline>, transport: &mut Transport, status: &Status) {
         let frame = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
@@ -146,7 +240,7 @@ impl View {
         let target = frame.texture.create_view(&Default::default());
         let size = (self.config.width, self.config.height);
 
-        // Transport bar.
+        // Transport bar and status overlay.
         let input = self.egui.take_egui_input(&self.window);
         let context = self.egui.egui_ctx().clone();
         let output = context.run_ui(input, |ui| {
@@ -165,6 +259,7 @@ impl View {
                     }
                 });
             });
+            status_overlay(ui.ctx(), status, timeline.is_some());
         });
         self.egui.handle_platform_output(&self.window, output.platform_output);
         let jobs = context.tessellate(output.shapes, output.pixels_per_point);
@@ -176,12 +271,23 @@ impl View {
         let (device, queue) = (&self.gpu.device, &self.gpu.queue);
         let mut encoder = device.create_command_encoder(&Default::default());
 
+        let mut scene = match timeline {
+            Some(timeline) => {
+                let state = timeline.evaluate(transport.time);
+                // Flatten curves to a quarter of a pixel at the current window size.
+                let pixels_per_unit = (f64::from(size.0) / state.size.x)
+                    .min(f64::from(size.1) / state.size.y)
+                    .max(1e-6);
+                Frame::from_state(&state, 0.25 / pixels_per_unit)
+            }
+            // Nothing built yet: an empty stage.
+            None => Frame {
+                background: palette::ink(),
+                size: DVec2::new(1280.0, 720.0),
+                items: Vec::new(),
+            },
+        };
         // The scene keeps its aspect ratio: fit the scene rectangle inside the window.
-        let state = timeline.evaluate(transport.time);
-        // Flatten curves to a quarter of a pixel at the current window size.
-        let pixels_per_unit =
-            (f64::from(size.0) / state.size.x).min(f64::from(size.1) / state.size.y).max(1e-6);
-        let mut scene = Frame::from_state(&state, 0.25 / pixels_per_unit);
         let window_aspect = f64::from(size.0) / f64::from(size.1);
         let scene_aspect = scene.size.x / scene.size.y;
         if window_aspect > scene_aspect {
@@ -229,25 +335,68 @@ impl View {
     }
 }
 
-/// Opens a preview window playing `timeline` on a loop and runs until it is closed.
-pub fn run(timeline: Timeline) -> Result<(), EditorError> {
-    let event_loop = EventLoop::new().map_err(|e| EditorError::Window(e.to_string()))?;
+fn event_loop() -> Result<EventLoop<ReloadEvent>, EditorError> {
+    let event_loop = EventLoop::<ReloadEvent>::with_user_event()
+        .build()
+        .map_err(|e| EditorError::Window(e.to_string()))?;
     event_loop.set_control_flow(ControlFlow::Wait);
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_with_display_handle_from_env(
-        Box::new(event_loop.owned_display_handle()),
-    ));
-    let mut app = App {
-        instance,
-        transport: Transport {
-            time: 0.0,
-            duration: timeline.duration,
-            playing: true,
-            last_tick: Instant::now(),
-        },
-        timeline,
-        view: None,
-        error: None,
-    };
+    Ok(event_loop)
+}
+
+fn drive(event_loop: EventLoop<ReloadEvent>, mut app: App) -> Result<(), EditorError> {
     event_loop.run_app(&mut app).map_err(|e| EditorError::Window(e.to_string()))?;
     app.error.map_or(Ok(()), Err)
+}
+
+fn instance(event_loop: &EventLoop<ReloadEvent>) -> wgpu::Instance {
+    wgpu::Instance::new(wgpu::InstanceDescriptor::new_with_display_handle_from_env(Box::new(
+        event_loop.owned_display_handle(),
+    )))
+}
+
+/// Opens a preview window playing `timeline` on a loop and runs until it is closed.
+pub fn run(timeline: Timeline) -> Result<(), EditorError> {
+    let event_loop = event_loop()?;
+    let app = App {
+        instance: instance(&event_loop),
+        title: "Kinetic".into(),
+        transport: Transport::new(timeline.duration),
+        timeline: Some(timeline),
+        status: Status::Ready,
+        view: None,
+        error: None,
+        _reloader: None,
+    };
+    drive(event_loop, app)
+}
+
+/// Opens a preview window on the scene crate in `dir`, and rebuilds and reloads it every
+/// time one of its files is saved. Runs until the window is closed.
+pub fn run_scene(dir: &Path) -> Result<(), EditorError> {
+    let scene = SceneCrate::open(dir).map_err(|e| EditorError::Scene(e.to_string()))?;
+    let event_loop = event_loop()?;
+    let proxy = event_loop.create_proxy();
+    let scratch = std::env::temp_dir().join("kinetic").join("scratch");
+    let reloader =
+        Reloader::start(scene, SceneCrate::default_target_dir(), scratch, move |event| {
+            // Only fails once the window has closed, when nobody is listening.
+            let _ = proxy.send_event(event);
+        })
+        .map_err(|e| EditorError::Scene(e.to_string()))?;
+    let name = dir
+        .canonicalize()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| dir.display().to_string());
+    let app = App {
+        instance: instance(&event_loop),
+        title: format!("Kinetic: {name}"),
+        timeline: None,
+        transport: Transport::new(0.0),
+        status: Status::Building,
+        view: None,
+        error: None,
+        _reloader: Some(reloader),
+    };
+    drive(event_loop, app)
 }
