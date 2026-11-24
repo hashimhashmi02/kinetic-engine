@@ -1,0 +1,19 @@
+[package]
+name = "kinetic-reload"
+description = "Builds scene crates, loads them as libraries and reloads them when they change."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kinetic-core = { version = "0.0.0", path = "../kinetic-core" }
+libloading = "0.9.1"
+serde_json = "1.0.154"
+
+[dev-dependencies]
+hello = { path = "../../scenes/hello" }
