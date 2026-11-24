@@ -3,6 +3,7 @@
 //! Everything in this crate is deterministic: the same inputs always produce the same
 //! outputs, with no dependence on the wall clock, randomness or iteration order.
 
+pub mod abi;
 pub mod bezier;
 pub mod color;
 pub mod ease;
