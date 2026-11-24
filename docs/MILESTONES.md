@@ -49,8 +49,8 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Loader: copy library to temp, `libloading`, deserialise, unload safely
 - [x] File watcher with debounce, background `cargo build`
 - [x] Build error overlay; previous timeline keeps playing
-- [ ] Playhead and play state preserved across reload
-- [ ] `kinetic preview scenes/hello` end to end; reload under about two seconds
+- [x] Playhead and play state preserved across reload
+- [x] `kinetic preview scenes/hello` end to end; reload under about two seconds
 - [ ] `kinetic new <name>` scaffolds a scene crate
 
 ## M4 — Paths and morphing (`v0.4.0`)
