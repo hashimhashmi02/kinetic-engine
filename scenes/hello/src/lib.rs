@@ -1,8 +1,8 @@
 //! The first Kinetic scene: a circle that grows, travels and springs, and a row of bars
 //! that arrive one by one.
 //!
-//! Scenes depend only on `kinetic-core`. Until hot reload lands (M3) this one is compiled
-//! into the `kinetic` binary as the built-in preview.
+//! Scenes depend only on `kinetic-core`. `kinetic_scene!` turns this one into a library
+//! the editor loads and reloads whenever the file is saved.
 
 use std::f64::consts::FRAC_PI_4;
 
@@ -38,6 +38,8 @@ pub fn scene(s: &mut Scene) {
     s.wait(0.5);
 }
 
+kinetic_core::kinetic_scene!(scene);
+
 /// The compiled scene.
 pub fn build() -> Timeline {
     let mut s = Scene::new();
@@ -64,5 +66,20 @@ mod tests {
         let end = tl.evaluate(tl.duration);
         assert_eq!(end.nodes[0].props.position, DVec2::new(-360.0, 60.0));
         assert!(end.nodes.iter().skip(1).all(|n| n.props.rotation == 0.0));
+    }
+
+    #[test]
+    fn exported_entry_points_return_the_same_timeline() {
+        use kinetic_core::abi::{SceneBytes, ABI_VERSION, STATUS_OK};
+        assert_eq!(kinetic_scene_abi_version(), ABI_VERSION);
+        let mut out = SceneBytes::EMPTY;
+        // SAFETY: out is a valid SceneBytes; the bytes are read, then handed back once.
+        let timeline = unsafe {
+            assert_eq!(kinetic_scene_build(&mut out), STATUS_OK);
+            let timeline = kinetic_core::wire::decode(out.as_slice()).expect("decode");
+            kinetic_scene_free(out);
+            timeline
+        };
+        assert_eq!(timeline, build());
     }
 }

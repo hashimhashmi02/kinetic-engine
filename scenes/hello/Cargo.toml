@@ -6,6 +6,10 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+# cdylib for hot reload in the editor; rlib so tests and the kinetic binary can link it.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [lints]
 workspace = true
 
