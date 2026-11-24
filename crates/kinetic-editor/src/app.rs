@@ -11,7 +11,7 @@ use kinetic_reload::{ReloadEvent, Reloader, SceneCrate};
 use kinetic_render::wgpu;
 use kinetic_render::{AdapterChoice, Frame, Gpu, Renderer};
 use winit::application::ApplicationHandler;
-use winit::dpi::LogicalSize;
+use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
@@ -74,9 +74,22 @@ impl View {
         instance: &wgpu::Instance,
         title: &str,
     ) -> Result<Self, EditorError> {
-        let attributes = Window::default_attributes()
-            .with_title(title)
-            .with_inner_size(LogicalSize::new(1280.0, 720.0));
+        let mut attributes = Window::default_attributes().with_title(title);
+        // 70% of the screen, 16:9, centred. A fixed logical size could fill a scaled laptop
+        // screen entirely and push the title bar, with its minimize button, off screen.
+        match event_loop.primary_monitor() {
+            Some(monitor) => {
+                let (screen, origin) = (monitor.size(), monitor.position());
+                let width = (f64::from(screen.width) * 0.7)
+                    .min(f64::from(screen.height) * 0.7 * 16.0 / 9.0);
+                let size = PhysicalSize::new(width as u32, (width * 9.0 / 16.0) as u32);
+                let x = origin.x + (screen.width.saturating_sub(size.width) / 2) as i32;
+                let y = origin.y + (screen.height.saturating_sub(size.height) / 2) as i32;
+                attributes =
+                    attributes.with_inner_size(size).with_position(PhysicalPosition::new(x, y));
+            }
+            None => attributes = attributes.with_inner_size(LogicalSize::new(960.0, 540.0)),
+        }
         let window = Arc::new(
             event_loop.create_window(attributes).map_err(|e| EditorError::Window(e.to_string()))?,
         );
@@ -349,9 +362,15 @@ fn drive(event_loop: EventLoop<ReloadEvent>, mut app: App) -> Result<(), EditorE
 }
 
 fn instance(event_loop: &EventLoop<ReloadEvent>) -> wgpu::Instance {
-    wgpu::Instance::new(wgpu::InstanceDescriptor::new_with_display_handle_from_env(Box::new(
+    let mut descriptor = wgpu::InstanceDescriptor::new_with_display_handle_from_env(Box::new(
         event_loop.owned_display_handle(),
-    )))
+    ));
+    // On Windows the window presents through DX12 unless WGPU_BACKEND says otherwise: a
+    // Vulkan swapchain on a laptop with switchable graphics made the whole screen flicker.
+    if cfg!(windows) && std::env::var_os("WGPU_BACKEND").is_none() {
+        descriptor.backends = wgpu::Backends::DX12;
+    }
+    wgpu::Instance::new(descriptor)
 }
 
 /// Opens a preview window playing `timeline` on a loop and runs until it is closed.
