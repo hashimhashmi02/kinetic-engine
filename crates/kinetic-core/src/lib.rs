@@ -8,6 +8,7 @@ pub mod bezier;
 pub mod color;
 pub mod ease;
 pub mod lerp;
+pub mod morph;
 pub mod node;
 pub mod path;
 pub mod polyline;
