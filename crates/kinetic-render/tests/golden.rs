@@ -3,7 +3,10 @@
 mod common;
 
 use kinetic_core::color::palette;
-use kinetic_core::{Circle, DVec2, Ease, Node, PathData, PathShape, Rect, Scene, Shape, Star};
+use kinetic_core::{
+    Circle, DVec2, Ease, Line, LineCap, LineJoin, LinearRgba, Node, PathData, PathShape, Polygon,
+    Rect, Scene, Shape, Star,
+};
 use kinetic_render::{render_to_rgba, Frame, Item, Renderer, TARGET_FORMAT};
 use kinetic_vector::{fill, shape};
 
@@ -96,4 +99,48 @@ fn morph_ring_to_disc() {
         PathShape::new(ring).fill(palette::green()),
         Circle::new(40.0),
     );
+}
+
+#[test]
+fn outlines() {
+    common::with_gpu(|gpu| {
+        let mut s = Scene::new();
+        let white = palette::WHITE;
+        // Butt, round and square caps, top to bottom.
+        for (cap, y) in [(LineCap::Butt, 45.0), (LineCap::Round, 0.0), (LineCap::Square, -45.0)] {
+            s.add(
+                Line::new((-40.0, 0.0), (40.0, 0.0))
+                    .stroke(white, 14.0)
+                    .line_cap(cap)
+                    .at((-225.0, y)),
+            );
+        }
+        // Miter, round and bevel joins on a triangle over its fill.
+        for (join, x) in
+            [(LineJoin::Miter, -100.0), (LineJoin::Round, 0.0), (LineJoin::Bevel, 100.0)]
+        {
+            s.add(
+                Polygon::new(3, 42.0)
+                    .fill(palette::amber())
+                    .stroke(white, 12.0)
+                    .line_join(join)
+                    .at((x, -6.0)),
+            );
+        }
+        // A circle's outline trimmed to its first seven tenths, with no fill.
+        s.add(
+            Circle::new(40.0)
+                .fill(LinearRgba::TRANSPARENT)
+                .stroke(palette::blue(), 10.0)
+                .trim(0.0, 0.7)
+                .at((225.0, 0.0)),
+        );
+        let (w, h) = (600, 160);
+        let mut frame = Frame::from_state(&s.build().evaluate(0.0), 0.1);
+        frame.background = palette::ink();
+        frame.size = DVec2::new(f64::from(w), f64::from(h));
+        let mut renderer = Renderer::new(&gpu.device, TARGET_FORMAT);
+        let image = render_to_rgba(gpu, &mut renderer, w, h, &frame).expect("render");
+        common::assert_golden("outlines", w, h, &image);
+    });
 }
