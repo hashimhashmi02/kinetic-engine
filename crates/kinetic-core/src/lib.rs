@@ -12,6 +12,7 @@ pub mod node;
 pub mod path;
 pub mod polyline;
 pub mod scene;
+pub mod shape;
 pub mod spring;
 pub mod timeline;
 pub mod track;
@@ -23,9 +24,13 @@ pub use color::LinearRgba;
 pub use ease::Ease;
 pub use glam::DVec2;
 pub use lerp::Lerp;
-pub use node::{Circle, Node, NodeDef, NodeId, PropertyId, Props, Rect, Shape};
+pub use node::{
+    Circle, Line, Node, NodeDef, NodeId, PathShape, Polygon, PropertyId, Props, Rect, RoundedRect,
+    Star,
+};
 pub use path::{Contour, PathData, PathEl};
 pub use scene::{Action, Handle, Scene, Timing};
+pub use shape::Shape;
 pub use spring::{spring, Spring};
 pub use timeline::{FrameState, NodeState, Timeline};
 pub use track::{Curve, Segment, Track};

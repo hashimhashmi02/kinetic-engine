@@ -3,16 +3,13 @@
 use kinetic_core::{DVec2, Shape};
 use kurbo::{Affine, BezPath};
 
-use crate::shape;
+use crate::convert::to_kurbo;
 
 /// The path for `shape`, scaled per axis and then rotated counter-clockwise by `rotation`
 /// radians, all about the shape's own centre. Translation is left to the renderer, so a
 /// node that only moves keeps the same path.
 pub fn node_path(shape: &Shape, scale: DVec2, rotation: f64) -> BezPath {
-    let base = match *shape {
-        Shape::Circle { radius } => shape::circle(DVec2::ZERO, radius),
-        Shape::Rect { size } => shape::rect(DVec2::ZERO, size),
-    };
+    let base = to_kurbo(&shape.to_path());
     Affine::rotate(rotation) * Affine::scale_non_uniform(scale.x, scale.y) * base
 }
 

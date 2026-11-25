@@ -4,6 +4,8 @@ use glam::DVec2;
 use serde::{Deserialize, Serialize};
 
 use crate::color::{palette, LinearRgba};
+use crate::path::PathData;
+pub use crate::shape::Shape;
 use crate::value::Value;
 
 /// Identifies a node within one timeline. Ids are dense indices in creation order, which
@@ -24,21 +26,6 @@ pub enum PropertyId {
     Opacity,
     /// Fill colour. A `Color`.
     Fill,
-}
-
-/// The geometry a node draws, before its transform is applied.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Shape {
-    /// A circle centred on the origin.
-    Circle {
-        /// Radius in scene units.
-        radius: f64,
-    },
-    /// An axis-aligned rectangle centred on the origin.
-    Rect {
-        /// Width and height in scene units.
-        size: DVec2,
-    },
 }
 
 /// Every animatable property of a node, resolved to a value.
@@ -167,6 +154,89 @@ impl Node for Rect {
     }
 }
 
+macro_rules! shape_node {
+    ($(#[$doc:meta])* $name:ident { $($field:ident: $ty:ty),* } => $shape:expr) => {
+        $(#[$doc])*
+        #[derive(Debug, Clone, PartialEq)]
+        pub struct $name {
+            $($field: $ty,)*
+            props: Props,
+        }
+
+        impl $name {
+            style_setters!();
+        }
+
+        impl Node for $name {
+            fn def(&self) -> NodeDef {
+                let Self { $($field,)* props } = self.clone();
+                NodeDef { shape: $shape, initial: props }
+            }
+        }
+    };
+}
+
+shape_node!(
+    /// A rectangle with rounded corners.
+    RoundedRect { size: DVec2, radius: f64 } => Shape::RoundedRect { size, radius }
+);
+
+impl RoundedRect {
+    /// A white `width` x `height` rectangle with corners of `radius`, centred at the origin.
+    pub fn new(width: f64, height: f64, radius: f64) -> Self {
+        Self { size: DVec2::new(width, height), radius, props: Props::default() }
+    }
+}
+
+shape_node!(
+    /// A regular polygon with a vertex at the top.
+    Polygon { sides: u32, radius: f64 } => Shape::Polygon { sides, radius }
+);
+
+impl Polygon {
+    /// A white regular polygon with `sides` sides and corners `radius` from its centre.
+    pub fn new(sides: u32, radius: f64) -> Self {
+        Self { sides, radius, props: Props::default() }
+    }
+}
+
+shape_node!(
+    /// A star with a point at the top.
+    Star { points: u32, outer: f64, inner: f64 } => Shape::Star { points, outer, inner }
+);
+
+impl Star {
+    /// A white star with `points` points reaching `outer` from its centre, and inner
+    /// corners at `inner`.
+    pub fn new(points: u32, outer: f64, inner: f64) -> Self {
+        Self { points, outer, inner, props: Props::default() }
+    }
+}
+
+shape_node!(
+    /// A straight line. It has no area, so it shows only when stroked.
+    Line { from: DVec2, to: DVec2 } => Shape::Line { from, to }
+);
+
+impl Line {
+    /// A line from `from` to `to`.
+    pub fn new(from: impl Into<DVec2>, to: impl Into<DVec2>) -> Self {
+        Self { from: from.into(), to: to.into(), props: Props::default() }
+    }
+}
+
+shape_node!(
+    /// Any path, built with [`PathData`].
+    PathShape { path: PathData } => Shape::Path(path)
+);
+
+impl PathShape {
+    /// A white shape drawn by `path`.
+    pub fn new(path: PathData) -> Self {
+        Self { path, props: Props::default() }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,5 +279,23 @@ mod tests {
         assert_eq!(def.initial.position, DVec2::new(10.0, -5.0));
         assert_eq!(def.initial.opacity, 0.5);
         assert_eq!(Rect::new(4.0, 2.0).def().shape, Shape::Rect { size: DVec2::new(4.0, 2.0) });
+    }
+
+    #[test]
+    fn new_shape_builders_describe_their_shapes() {
+        assert_eq!(Polygon::new(6, 3.0).def().shape, Shape::Polygon { sides: 6, radius: 3.0 });
+        assert_eq!(
+            Star::new(5, 4.0, 2.0).def().shape,
+            Shape::Star { points: 5, outer: 4.0, inner: 2.0 }
+        );
+        let line = Line::new((0.0, 0.0), (1.0, 1.0)).fill(palette::red()).def();
+        assert_eq!(line.shape, Shape::Line { from: DVec2::ZERO, to: DVec2::ONE });
+        assert_eq!(line.initial.fill, palette::red());
+        let rr = RoundedRect::new(4.0, 2.0, 0.5).at((1.0, 1.0)).def();
+        assert_eq!(rr.shape, Shape::RoundedRect { size: DVec2::new(4.0, 2.0), radius: 0.5 });
+        assert_eq!(rr.initial.position, DVec2::ONE);
+        let path =
+            PathData::new().move_to((0.0, 0.0)).line_to((1.0, 0.0)).line_to((0.0, 1.0)).close();
+        assert_eq!(PathShape::new(path.clone()).def().shape, Shape::Path(path));
     }
 }
