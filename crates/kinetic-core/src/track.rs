@@ -40,7 +40,7 @@ impl Curve {
 }
 
 /// One change: from `from` at `start` to `to` at `start + duration`.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Segment {
     pub start: f64,
     pub duration: f64,
@@ -62,7 +62,7 @@ impl Segment {
         // Compare against the end in absolute time: `t - start` can round to a hair under
         // the duration exactly at the end, which would leave the value short of `to`.
         if t >= self.end() {
-            return self.to;
+            return self.to.clone();
         }
         self.from.lerp(&self.to, self.curve.progress(t - self.start, self.duration))
     }
@@ -93,7 +93,7 @@ impl Track {
         let active = self.segments.partition_point(|s| s.start <= t);
         match active.checked_sub(1) {
             Some(i) => self.segments[i].value_at(t),
-            None => self.initial,
+            None => self.initial.clone(),
         }
     }
 

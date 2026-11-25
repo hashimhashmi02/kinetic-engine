@@ -10,7 +10,7 @@ use crate::lerp::Lerp;
 ///
 /// Every track keeps one variant for its whole life: a position is always a `Vec2`, an
 /// opacity always a `Scalar`.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     /// A plain number: rotation in radians, opacity in `[0, 1]`.
     Scalar(f64),
@@ -28,8 +28,8 @@ impl Lerp for Value {
             (Self::Scalar(a), Self::Scalar(b)) => Self::Scalar(a.lerp(b, u)),
             (Self::Vec2(a), Self::Vec2(b)) => Self::Vec2(Lerp::lerp(a, b, u)),
             (Self::Color(a), Self::Color(b)) => Self::Color(a.lerp(b, u)),
-            _ if u >= 1.0 => *other,
-            _ => *self,
+            _ if u >= 1.0 => other.clone(),
+            _ => self.clone(),
         }
     }
 }

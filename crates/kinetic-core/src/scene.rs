@@ -61,7 +61,7 @@ impl From<Spring> for Timing {
 
 /// A requested change: set one property of one node to a target value. Created by
 /// [`Handle`] methods and carried out by [`Scene::play`] and friends.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Action {
     pub node: NodeId,
     pub property: PropertyId,

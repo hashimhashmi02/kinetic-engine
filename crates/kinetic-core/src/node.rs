@@ -27,7 +27,7 @@ pub enum PropertyId {
 }
 
 /// The geometry a node draws, before its transform is applied.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Shape {
     /// A circle centred on the origin.
     Circle {
@@ -89,7 +89,7 @@ impl Props {
 }
 
 /// A node as created: its shape and the values its properties start with.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NodeDef {
     pub shape: Shape,
     pub initial: Props,
@@ -182,7 +182,7 @@ mod tests {
             (PropertyId::Fill, Value::Color(palette::blue())),
         ];
         for (property, value) in values {
-            props.set(property, value);
+            props.set(property, value.clone());
             assert_eq!(props.get(property), value, "{property:?}");
         }
     }

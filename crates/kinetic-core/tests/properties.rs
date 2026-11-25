@@ -103,15 +103,15 @@ fn build(ops: &[Op]) -> Timeline {
     s.build()
 }
 
-fn magnitude(v: Value) -> f64 {
-    match v {
+fn magnitude(v: &Value) -> f64 {
+    match *v {
         Value::Scalar(x) => x.abs(),
         Value::Vec2(x) => x.length(),
         Value::Color(c) => c.to_array().iter().map(|x| f64::from(x.abs())).fold(0.0, f64::max),
     }
 }
 
-fn distance(a: Value, b: Value) -> f64 {
+fn distance(a: &Value, b: &Value) -> f64 {
     match (a, b) {
         (Value::Scalar(x), Value::Scalar(y)) => (x - y).abs(),
         (Value::Vec2(x), Value::Vec2(y)) => (x - y).length(),
@@ -151,8 +151,8 @@ proptest! {
                 if !jump_here {
                     // Relative to the size of the values: a steep curve on a large value
                     // moves further in the probe interval than the same curve on a small one.
-                    let size = 1.0 + magnitude(before).max(magnitude(at));
-                    prop_assert!(distance(before, at) < 1e-5 * size, "jump of {} at {}", distance(before, at), seg.start);
+                    let size = 1.0 + magnitude(&before).max(magnitude(&at));
+                    prop_assert!(distance(&before, &at) < 1e-5 * size, "jump of {} at {}", distance(&before, &at), seg.start);
                 }
             }
         }
@@ -164,7 +164,7 @@ proptest! {
         for track in &tl.tracks {
             if let Some(last) = track.segments.last() {
                 prop_assert!(last.end() <= tl.duration + 1e-9);
-                prop_assert_eq!(track.value_at(tl.duration), last.to);
+                prop_assert_eq!(track.value_at(tl.duration), last.to.clone());
             }
         }
     }

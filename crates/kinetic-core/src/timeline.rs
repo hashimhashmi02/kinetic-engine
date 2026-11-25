@@ -24,7 +24,7 @@ pub struct Timeline {
 }
 
 /// One node at one moment.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NodeState {
     pub id: NodeId,
     pub shape: Shape,
@@ -53,7 +53,7 @@ impl Timeline {
             .enumerate()
             .map(|(i, def)| NodeState {
                 id: NodeId(i as u32),
-                shape: def.shape,
+                shape: def.shape.clone(),
                 props: def.initial,
             })
             .collect();
