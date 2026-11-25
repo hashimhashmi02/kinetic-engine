@@ -4,6 +4,7 @@
 //! pixels. It knows nothing about time: evaluating a timeline into a frame happens above
 //! this crate.
 
+mod cache;
 mod gpu;
 mod headless;
 mod lower;
@@ -14,6 +15,7 @@ use std::fmt;
 use kinetic_core::{DVec2, LinearRgba};
 use kinetic_vector::Mesh;
 
+pub use cache::MeshCache;
 pub use gpu::{AdapterChoice, Gpu};
 pub use headless::render_to_rgba;
 pub use renderer::{Renderer, SAMPLE_COUNT};

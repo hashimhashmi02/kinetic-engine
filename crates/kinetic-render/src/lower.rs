@@ -1,9 +1,56 @@
 //! Turning an evaluated scene into something drawable.
 
-use kinetic_core::{FrameState, Shape};
-use kinetic_vector::{fill, node_path, stroke, trim, StrokeStyle};
+use kinetic_core::{DVec2, FrameState, Shape};
+use kinetic_vector::{fill, node_path, stroke, trim, Mesh, StrokeStyle};
 
 use crate::{Frame, Item};
+
+/// One mesh a node needs: its fill, or its outline when `outline` is set.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Part<'a> {
+    pub shape: &'a Shape,
+    pub scale: DVec2,
+    pub rotation: f64,
+    /// The stroke style, its width already scaled, and the (start, end) trim.
+    pub outline: Option<(StrokeStyle, DVec2)>,
+}
+
+/// Tessellates one part. `None` when the path collapsed to nothing.
+pub(crate) fn tessellate(part: &Part, tolerance: f64) -> Option<Mesh> {
+    let path = node_path(part.shape, part.scale, part.rotation);
+    let mesh = match part.outline {
+        None => fill(&path, tolerance),
+        Some((style, t)) => stroke(&trim(&path, t.x, t.y), &style, tolerance),
+    };
+    mesh.ok().filter(|m| !m.is_empty())
+}
+
+/// Builds a frame from `state`, asking `mesh_for` for each part's mesh in draw order.
+pub(crate) fn lower(state: &FrameState, mut mesh_for: impl FnMut(&Part) -> Option<Mesh>) -> Frame {
+    let mut items = Vec::new();
+    for node in state.nodes.iter().filter(|node| node.props.opacity > 0.0) {
+        let p = &node.props;
+        let base = Part { shape: &node.shape, scale: p.scale, rotation: p.rotation, outline: None };
+        let mut push = |part: Part, color: kinetic_core::LinearRgba| {
+            if let Some(mesh) = mesh_for(&part) {
+                items.push(Item {
+                    mesh,
+                    color: color.with_opacity(p.opacity as f32),
+                    offset: p.position,
+                });
+            }
+        };
+        if p.fill.a > 0.0 && !matches!(node.shape, Shape::Line { .. }) {
+            push(base, p.fill);
+        }
+        let width = p.stroke_width * (p.scale.x * p.scale.y).abs().sqrt();
+        if width > 0.0 && p.stroke.a > 0.0 {
+            let style = StrokeStyle { width, cap: p.cap, join: p.join };
+            push(Part { outline: Some((style, p.trim)), ..base }, p.stroke);
+        }
+    }
+    Frame { background: state.background, size: state.size, items }
+}
 
 impl Frame {
     /// Tessellates every node of `state` into a drawable frame.
@@ -16,31 +63,10 @@ impl Frame {
     /// `tolerance` is the curve flattening tolerance in scene units; pass the size of a
     /// fraction of a pixel at the output resolution. Fully transparent nodes and parts are
     /// skipped, and so is a path that cannot be tessellated (it has collapsed to nothing).
+    /// [`MeshCache::frame`](crate::MeshCache::frame) gives the same frame while reusing
+    /// meshes from the frame before.
     pub fn from_state(state: &FrameState, tolerance: f64) -> Self {
-        let mut items = Vec::new();
-        for node in state.nodes.iter().filter(|node| node.props.opacity > 0.0) {
-            let p = &node.props;
-            let opacity = p.opacity as f32;
-            let path = node_path(&node.shape, p.scale, p.rotation);
-            let mut push = |mesh: Option<kinetic_vector::Mesh>, color: kinetic_core::LinearRgba| {
-                if let Some(mesh) = mesh.filter(|m| !m.is_empty()) {
-                    items.push(Item {
-                        mesh,
-                        color: color.with_opacity(opacity),
-                        offset: p.position,
-                    });
-                }
-            };
-            if p.fill.a > 0.0 && !matches!(node.shape, Shape::Line { .. }) {
-                push(fill(&path, tolerance).ok(), p.fill);
-            }
-            let width = p.stroke_width * (p.scale.x * p.scale.y).abs().sqrt();
-            if width > 0.0 && p.stroke.a > 0.0 {
-                let style = StrokeStyle { width, cap: p.cap, join: p.join };
-                push(stroke(&trim(&path, p.trim.x, p.trim.y), &style, tolerance).ok(), p.stroke);
-            }
-        }
-        Frame { background: state.background, size: state.size, items }
+        lower(state, |part| tessellate(part, tolerance))
     }
 }
 
