@@ -9,7 +9,7 @@ use kinetic_core::color::palette;
 use kinetic_core::{DVec2, Timeline};
 use kinetic_reload::{ReloadEvent, Reloader, SceneCrate};
 use kinetic_render::wgpu;
-use kinetic_render::{AdapterChoice, Frame, Gpu, Renderer};
+use kinetic_render::{AdapterChoice, Frame, Gpu, MeshCache, Renderer};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::event::WindowEvent;
@@ -52,6 +52,8 @@ struct View {
     config: wgpu::SurfaceConfiguration,
     gpu: Gpu,
     renderer: Renderer,
+    /// Meshes from the last frame; nodes whose geometry did not change reuse them.
+    meshes: MeshCache,
     egui: egui_winit::State,
     egui_renderer: egui_wgpu::Renderer,
 }
@@ -122,7 +124,8 @@ impl View {
             config.format,
             egui_wgpu::RendererOptions::default(),
         );
-        Ok(Self { window, surface, config, gpu, renderer, egui, egui_renderer })
+        let meshes = MeshCache::new();
+        Ok(Self { window, surface, config, gpu, renderer, meshes, egui, egui_renderer })
     }
 }
 
@@ -291,7 +294,7 @@ impl View {
                 let pixels_per_unit = (f64::from(size.0) / state.size.x)
                     .min(f64::from(size.1) / state.size.y)
                     .max(1e-6);
-                Frame::from_state(&state, 0.25 / pixels_per_unit)
+                self.meshes.frame(&state, 0.25 / pixels_per_unit)
             }
             // Nothing built yet: an empty stage.
             None => Frame {
