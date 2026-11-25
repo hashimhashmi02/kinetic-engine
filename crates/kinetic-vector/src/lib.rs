@@ -7,5 +7,5 @@ pub mod shape;
 
 pub use convert::to_kurbo;
 pub use kurbo::BezPath;
-pub use mesh::{fill, Mesh, TessellateError};
+pub use mesh::{fill, stroke, Mesh, StrokeStyle, TessellateError};
 pub use node::node_path;

@@ -2,10 +2,14 @@
 
 use std::fmt;
 
+use kinetic_core::{LineCap, LineJoin};
 use kurbo::{BezPath, PathEl};
 use lyon_tessellation::math::point;
 use lyon_tessellation::path::Path;
-use lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, VertexBuffers};
+use lyon_tessellation::{
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
+    StrokeVertex, VertexBuffers,
+};
 
 /// An indexed triangle list in scene units.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -104,6 +108,57 @@ pub fn fill(path: &BezPath, tolerance: f64) -> Result<Mesh, TessellateError> {
     Ok(Mesh { vertices: buffers.vertices, indices: buffers.indices })
 }
 
+/// How an outline is drawn.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StrokeStyle {
+    /// Width in scene units.
+    pub width: f64,
+    /// How the ends of open subpaths are drawn.
+    pub cap: LineCap,
+    /// How corners are drawn.
+    pub join: LineJoin,
+}
+
+/// Miter joins longer than this many half-widths are cut off, so very sharp corners do
+/// not grow long spikes.
+const MITER_LIMIT: f32 = 4.0;
+
+/// Tessellates the outline of `path` drawn with `style` into triangles. A zero width gives
+/// an empty mesh.
+pub fn stroke(
+    path: &BezPath,
+    style: &StrokeStyle,
+    tolerance: f64,
+) -> Result<Mesh, TessellateError> {
+    if style.width <= 0.0 {
+        return Ok(Mesh::default());
+    }
+    let cap = match style.cap {
+        LineCap::Butt => lyon_tessellation::LineCap::Butt,
+        LineCap::Round => lyon_tessellation::LineCap::Round,
+        LineCap::Square => lyon_tessellation::LineCap::Square,
+    };
+    let join = match style.join {
+        LineJoin::Miter => lyon_tessellation::LineJoin::Miter,
+        LineJoin::Round => lyon_tessellation::LineJoin::Round,
+        LineJoin::Bevel => lyon_tessellation::LineJoin::Bevel,
+    };
+    let options = StrokeOptions::tolerance(tolerance as f32)
+        .with_line_width(style.width as f32)
+        .with_line_cap(cap)
+        .with_line_join(join)
+        .with_miter_limit(MITER_LIMIT);
+    let mut buffers: VertexBuffers<[f32; 2], u32> = VertexBuffers::new();
+    StrokeTessellator::new()
+        .tessellate_path(
+            &to_lyon(path),
+            &options,
+            &mut BuffersBuilder::new(&mut buffers, |v: StrokeVertex| v.position().to_array()),
+        )
+        .map_err(|e| TessellateError(format!("{e:?}")))?;
+    Ok(Mesh { vertices: buffers.vertices, indices: buffers.indices })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,5 +199,43 @@ mod tests {
     fn tessellation_is_deterministic() {
         let path = shape::circle(DVec2::ZERO, 64.0);
         assert_eq!(fill(&path, 0.1).unwrap(), fill(&path, 0.1).unwrap());
+    }
+
+    fn line() -> BezPath {
+        let mut p = BezPath::new();
+        p.move_to((0.0, 0.0));
+        p.line_to((100.0, 0.0));
+        p
+    }
+
+    fn style(width: f64, cap: LineCap, join: LineJoin) -> StrokeStyle {
+        StrokeStyle { width, cap, join }
+    }
+
+    #[test]
+    fn caps_extend_an_open_line_by_the_expected_area() {
+        let area = |cap| stroke(&line(), &style(10.0, cap, LineJoin::Miter), 0.01).unwrap().area();
+        assert!((area(LineCap::Butt) - 1000.0).abs() < 1e-3);
+        assert!((area(LineCap::Square) - 1100.0).abs() < 1e-3);
+        let round = 1000.0 + std::f64::consts::PI * 25.0;
+        assert!((area(LineCap::Round) - round).abs() < 0.5, "{}", area(LineCap::Round));
+    }
+
+    #[test]
+    fn joins_shape_the_corners_of_a_closed_square() {
+        let square = shape::rect(DVec2::ZERO, DVec2::new(100.0, 100.0));
+        let area = |join| stroke(&square, &style(10.0, LineCap::Butt, join), 0.01).unwrap().area();
+        // A 110 by 110 square minus a 90 by 90 hole, less what each join cuts off.
+        let miter = 110.0 * 110.0 - 90.0 * 90.0;
+        assert!((area(LineJoin::Miter) - miter).abs() < 1.0, "{}", area(LineJoin::Miter));
+        assert!((area(LineJoin::Bevel) - (miter - 4.0 * 12.5)).abs() < 1.0);
+        let round = miter - 4.0 * (25.0 - std::f64::consts::PI * 25.0 / 4.0);
+        assert!((area(LineJoin::Round) - round).abs() < 1.0, "{}", area(LineJoin::Round));
+    }
+
+    #[test]
+    fn zero_width_draws_nothing() {
+        let mesh = stroke(&line(), &style(0.0, LineCap::Round, LineJoin::Round), 0.1).unwrap();
+        assert!(mesh.is_empty());
     }
 }
