@@ -28,6 +28,37 @@ pub enum PropertyId {
     Fill,
     /// The node's geometry. A `Shape`; changing it morphs one shape into another.
     Shape,
+    /// Outline colour. A `Color`.
+    Stroke,
+    /// Outline width in scene units. A `Scalar`.
+    StrokeWidth,
+    /// The part of the outline that is drawn, as fractions of its length from the start.
+    /// A `Vec2` of (start, end); (0, 1) draws all of it.
+    Trim,
+}
+
+/// How the ends of an open outline are drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum LineCap {
+    /// Stops exactly at the end.
+    Butt,
+    /// A half circle past the end.
+    #[default]
+    Round,
+    /// A half square past the end.
+    Square,
+}
+
+/// How corners of an outline are drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum LineJoin {
+    /// A sharp point, cut off when very long.
+    Miter,
+    /// A rounded corner.
+    #[default]
+    Round,
+    /// A corner cut flat.
+    Bevel,
 }
 
 /// Every animatable property of a node, resolved to a value.
@@ -38,6 +69,14 @@ pub struct Props {
     pub rotation: f64,
     pub opacity: f64,
     pub fill: LinearRgba,
+    pub stroke: LinearRgba,
+    pub stroke_width: f64,
+    /// Drawn part of the outline: (start, end) as fractions of its length.
+    pub trim: DVec2,
+    /// Not animated: how outline ends are drawn.
+    pub cap: LineCap,
+    /// Not animated: how outline corners are drawn.
+    pub join: LineJoin,
 }
 
 impl Default for Props {
@@ -48,6 +87,11 @@ impl Default for Props {
             rotation: 0.0,
             opacity: 1.0,
             fill: palette::WHITE,
+            stroke: LinearRgba::TRANSPARENT,
+            stroke_width: 0.0,
+            trim: DVec2::new(0.0, 1.0),
+            cap: LineCap::default(),
+            join: LineJoin::default(),
         }
     }
 }
@@ -62,6 +106,9 @@ impl Props {
             PropertyId::Rotation => Value::Scalar(self.rotation),
             PropertyId::Opacity => Value::Scalar(self.opacity),
             PropertyId::Fill => Value::Color(self.fill),
+            PropertyId::Stroke => Value::Color(self.stroke),
+            PropertyId::StrokeWidth => Value::Scalar(self.stroke_width),
+            PropertyId::Trim => Value::Vec2(self.trim),
             PropertyId::Shape => return None,
         })
     }
@@ -74,6 +121,9 @@ impl Props {
             (PropertyId::Rotation, Value::Scalar(v)) => self.rotation = v,
             (PropertyId::Opacity, Value::Scalar(v)) => self.opacity = v.clamp(0.0, 1.0),
             (PropertyId::Fill, Value::Color(v)) => self.fill = v,
+            (PropertyId::Stroke, Value::Color(v)) => self.stroke = v,
+            (PropertyId::StrokeWidth, Value::Scalar(v)) => self.stroke_width = v.max(0.0),
+            (PropertyId::Trim, Value::Vec2(v)) => self.trim = v.clamp(DVec2::ZERO, DVec2::ONE),
             _ => {}
         }
     }
@@ -113,6 +163,32 @@ macro_rules! style_setters {
         /// Sets the starting position.
         pub fn at(mut self, position: impl Into<DVec2>) -> Self {
             self.props.position = position.into();
+            self
+        }
+
+        /// Draws an outline of `width` scene units in `color`.
+        pub fn stroke(mut self, color: LinearRgba, width: f64) -> Self {
+            self.props.stroke = color;
+            self.props.stroke_width = width.max(0.0);
+            self
+        }
+
+        /// Sets how the ends of an open outline are drawn.
+        pub fn line_cap(mut self, cap: LineCap) -> Self {
+            self.props.cap = cap;
+            self
+        }
+
+        /// Sets how the outline's corners are drawn.
+        pub fn line_join(mut self, join: LineJoin) -> Self {
+            self.props.join = join;
+            self
+        }
+
+        /// Draws only part of the outline: from `start` to `end`, as fractions of its
+        /// length. Animating it gives a draw-on effect.
+        pub fn trim(mut self, start: f64, end: f64) -> Self {
+            self.props.trim = DVec2::new(start, end).clamp(DVec2::ZERO, DVec2::ONE);
             self
         }
 
@@ -311,5 +387,28 @@ mod tests {
         let path =
             PathData::new().move_to((0.0, 0.0)).line_to((1.0, 0.0)).line_to((0.0, 1.0)).close();
         assert_eq!(PathShape::new(path.clone()).def().shape, Shape::Path(path));
+    }
+
+    #[test]
+    fn stroke_setters_and_defaults() {
+        let plain = Props::default();
+        assert_eq!((plain.stroke_width, plain.trim), (0.0, DVec2::new(0.0, 1.0)));
+        let def = Circle::new(5.0)
+            .stroke(palette::red(), 3.0)
+            .line_cap(LineCap::Square)
+            .line_join(LineJoin::Bevel)
+            .trim(0.25, 2.0)
+            .def();
+        assert_eq!(def.initial.stroke, palette::red());
+        assert_eq!(def.initial.stroke_width, 3.0);
+        assert_eq!((def.initial.cap, def.initial.join), (LineCap::Square, LineJoin::Bevel));
+        assert_eq!(def.initial.trim, DVec2::new(0.25, 1.0), "trim is clamped");
+    }
+
+    #[test]
+    fn negative_stroke_width_is_clamped() {
+        let mut props = Props::default();
+        props.set(PropertyId::StrokeWidth, Value::Scalar(-2.0));
+        assert_eq!(props.stroke_width, 0.0);
     }
 }

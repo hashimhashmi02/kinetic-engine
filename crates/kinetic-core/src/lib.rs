@@ -26,8 +26,8 @@ pub use ease::Ease;
 pub use glam::DVec2;
 pub use lerp::Lerp;
 pub use node::{
-    Circle, Line, Node, NodeDef, NodeId, PathShape, Polygon, PropertyId, Props, Rect, RoundedRect,
-    Star,
+    Circle, Line, LineCap, LineJoin, Node, NodeDef, NodeId, PathShape, Polygon, PropertyId, Props,
+    Rect, RoundedRect, Star,
 };
 pub use path::{Contour, PathData, PathEl};
 pub use scene::{Action, Handle, Scene, Timing};

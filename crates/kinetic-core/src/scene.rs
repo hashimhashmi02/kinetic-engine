@@ -247,6 +247,23 @@ impl<N> Handle<N> {
     pub fn fill_to(&self, color: LinearRgba) -> Action {
         self.action(PropertyId::Fill, Value::Color(color))
     }
+
+    /// Changes the outline colour.
+    pub fn stroke_to(&self, color: LinearRgba) -> Action {
+        self.action(PropertyId::Stroke, Value::Color(color))
+    }
+
+    /// Changes the outline width.
+    pub fn stroke_width_to(&self, width: f64) -> Action {
+        self.action(PropertyId::StrokeWidth, Value::Scalar(width.max(0.0)))
+    }
+
+    /// Changes the drawn part of the outline; `trim_to(0.0, 1.0)` from a trim of
+    /// (0.0, 0.0) draws the outline on.
+    pub fn trim_to(&self, start: f64, end: f64) -> Action {
+        let trim = DVec2::new(start, end).clamp(DVec2::ZERO, DVec2::ONE);
+        self.action(PropertyId::Trim, Value::Vec2(trim))
+    }
 }
 
 impl Scene {
@@ -536,5 +553,24 @@ mod tests {
         let tl = s.build();
         let back = crate::wire::decode(&crate::wire::encode(&tl).expect("encode")).expect("decode");
         assert_eq!(back.evaluate(0.4), tl.evaluate(0.4));
+    }
+
+    #[test]
+    fn stroke_and_trim_animate_like_any_property() {
+        let mut s = Scene::new();
+        let line = s.add(
+            crate::node::Line::new((0.0, 0.0), (100.0, 0.0))
+                .stroke(palette::WHITE, 4.0)
+                .trim(0.0, 0.0),
+        );
+        s.parallel(
+            [line.trim_to(0.0, 1.0), line.stroke_width_to(8.0), line.stroke_to(palette::red())],
+            (1.0, Ease::Linear),
+        );
+        let tl = s.build();
+        let mid = tl.evaluate(0.5).nodes[0].props;
+        assert_eq!(mid.trim, DVec2::new(0.0, 0.5));
+        assert_eq!(mid.stroke_width, 6.0);
+        assert_eq!(tl.evaluate(1.0).nodes[0].props.stroke, palette::red());
     }
 }
