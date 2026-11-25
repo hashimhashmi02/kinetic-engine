@@ -1,0 +1,17 @@
+[package]
+name = "morph"
+description = "Kinetic's morph example: outlines drawing on, shapes morphing, a ring closing up."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# cdylib for hot reload in the editor; rlib so tests and the kinetic binary can link it.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+kinetic-core = { path = "../../crates/kinetic-core" }
