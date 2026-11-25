@@ -10,6 +10,7 @@ pub mod ease;
 pub mod lerp;
 pub mod node;
 pub mod path;
+pub mod polyline;
 pub mod scene;
 pub mod spring;
 pub mod timeline;

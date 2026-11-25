@@ -58,7 +58,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [ ] `PathData`, shape lowering for polygon, star, line, rounded rect, custom bezier
 - [ ] Stroke tessellation: width, caps, joins
 - [ ] `trim` property (draw-on effect by arc length)
-- [ ] Arc-length resampling
+- [x] Arc-length resampling
 - [ ] Winding normalisation and start-point alignment
 - [ ] Subpath pairing; grow from / shrink to point
 - [ ] `morph_to` action with prepared pairs stored at build time
