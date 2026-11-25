@@ -56,6 +56,13 @@ cargo run -p kinetic-cli -- new scenes/my-scene
 cargo run -p kinetic-cli -- preview scenes/my-scene
 ```
 
+The examples live in `scenes/`: `hello` shows easings, a spring and a stagger; `morph` draws outlines on with `trim`, morphs a circle into a square, a kite and a star, and closes a ring into a disc.
+
+```rust
+s.play(hero.trim_to(0.0, 1.0), (1.2, Ease::InOutCubic));           // draw the outline on
+s.play(hero.morph_to(Star::new(5, 160.0, 66.0)), Spring::WOBBLY);  // any shape into any shape
+```
+
 Timings are written as seconds (`0.6`), seconds with an easing (`(0.6, Ease::OutBack)`), seconds with a cubic bezier (`(0.6, CubicBezier::EASE)`), or a spring, which lasts until it settles.
 
 ## License
