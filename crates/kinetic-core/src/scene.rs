@@ -105,6 +105,12 @@ impl<N> Handle<N> {
         Action { node: self.id, property, target }
     }
 
+    /// Morphs the node into the shape of `target`; only its geometry is used, not its
+    /// colour or position. The two shapes are matched up when the scene is built.
+    pub fn morph_to(&self, target: impl Node) -> Action {
+        self.action(PropertyId::Shape, Value::Shape(target.def().shape))
+    }
+
     /// Moves the node's centre to `position`.
     pub fn move_to(&self, position: impl Into<DVec2>) -> Action {
         self.action(PropertyId::Position, Value::Vec2(position.into()))
@@ -190,7 +196,7 @@ impl Scene {
     }
 
     fn track_mut(&mut self, node: NodeId, property: PropertyId) -> Option<&mut Track> {
-        let initial = self.nodes.get(node.0 as usize)?.initial.get(property);
+        let initial = self.nodes.get(node.0 as usize)?.get(property);
         let key = (node, property);
         let at = match self.tracks.binary_search_by_key(&key, |t| (t.node, t.property)) {
             Ok(i) => i,
@@ -455,5 +461,80 @@ mod tests {
         let at = |t: f64| tl.evaluate(t).nodes[0].props.position;
         assert!((at(0.5 - 1e-9) - at(0.5)).length() < 1e-6);
         assert_eq!(at(1.5), DVec2::new(0.0, 10.0));
+    }
+
+    fn outline(frame: &crate::timeline::FrameState) -> Vec<Vec<DVec2>> {
+        match &frame.nodes[0].shape {
+            crate::shape::Shape::Outline { contours } => contours.clone(),
+            other => panic!("expected an outline, got {other:?}"),
+        }
+    }
+
+    fn area(contours: &[Vec<DVec2>]) -> f64 {
+        contours.iter().map(|c| crate::shape::signed_area(c)).sum()
+    }
+
+    #[test]
+    fn morph_goes_from_one_shape_to_the_other() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(40.0));
+        s.play(dot.morph_to(Rect::new(120.0, 60.0)), (1.0, Ease::Linear));
+        let tl = s.build();
+
+        // Before the change the node still has its own shape.
+        assert_eq!(tl.evaluate(-1.0).nodes[0].shape, crate::shape::Shape::Circle { radius: 40.0 });
+        let start = outline(&tl.evaluate(0.0));
+        assert!(start[0].iter().all(|p| (p.length() - 40.0).abs() < 0.05));
+        let end = outline(&tl.evaluate(1.0));
+        assert!((area(&end) - 7200.0).abs() < 1.0);
+        // Half way, every point is half way between its two ends.
+        let mid = outline(&tl.evaluate(0.5));
+        for ((m, a), b) in mid[0].iter().zip(&start[0]).zip(&end[0]) {
+            assert!((*m - (*a + *b) / 2.0).length() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn interrupting_a_morph_starts_from_where_it_had_got_to() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(40.0));
+        s.play(dot.morph_to(Rect::new(120.0, 60.0)), (2.0, Ease::Linear));
+        let tl_one = s.clone().build();
+        // A second morph starting half way through the first.
+        let mut s2 = Scene::new();
+        let dot2 = s2.add(Circle::new(40.0));
+        s2.stagger(
+            [
+                dot2.morph_to(Rect::new(120.0, 60.0)),
+                dot2.morph_to(crate::node::Star::new(5, 60.0, 25.0)),
+            ],
+            (2.0, Ease::Linear),
+            1.0,
+        );
+        let tl_two = s2.build();
+        let before = area(&outline(&tl_one.evaluate(1.0)));
+        let after = area(&outline(&tl_two.evaluate(1.0)));
+        assert!((before - after).abs() < before * 0.01, "{before} vs {after}");
+    }
+
+    #[test]
+    fn chained_morphs_end_on_the_last_shape() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(40.0));
+        s.play(dot.morph_to(Rect::new(80.0, 80.0)), 0.5);
+        s.play(dot.morph_to(crate::node::Polygon::new(6, 50.0)), 0.5);
+        let tl = s.build();
+        let hexagon = 1.5 * 3.0_f64.sqrt() * 2500.0;
+        assert!((area(&outline(&tl.evaluate(tl.duration))) - hexagon).abs() < 2.0);
+    }
+
+    #[test]
+    fn morphing_timelines_survive_the_wire() {
+        let mut s = Scene::new();
+        let dot = s.add(Circle::new(40.0));
+        s.play(dot.morph_to(crate::node::Star::new(5, 60.0, 25.0)), 0.8);
+        let tl = s.build();
+        let back = crate::wire::decode(&crate::wire::encode(&tl).expect("encode")).expect("decode");
+        assert_eq!(back.evaluate(0.4), tl.evaluate(0.4));
     }
 }

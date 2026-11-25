@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::bezier::CubicBezier;
 use crate::ease::Ease;
 use crate::lerp::Lerp;
+use crate::morph;
 use crate::node::{NodeId, PropertyId};
 use crate::spring::Spring;
 use crate::value::Value;
@@ -100,7 +101,13 @@ impl Track {
     /// Adds a change towards `to`, starting at `start`. Its starting value is whatever the
     /// track holds at that moment.
     pub fn push(&mut self, start: f64, duration: f64, to: Value, curve: Curve) {
-        let from = self.value_at(start);
+        let mut from = self.value_at(start);
+        let mut to = to;
+        // A change of shape is matched up now, once, so evaluating it is a plain lerp.
+        if let (Value::Shape(a), Value::Shape(b)) = (&from, &to) {
+            let (a, b) = morph::prepare(a, b);
+            (from, to) = (Value::Shape(a), Value::Shape(b));
+        }
         let segment = Segment { start, duration: duration.max(0.0), from, to, curve };
         // Keep the order stable: among equal start times, the newest wins.
         let at = self.segments.partition_point(|s| s.start <= start);

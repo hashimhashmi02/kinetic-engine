@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::color::LinearRgba;
 use crate::lerp::Lerp;
+use crate::shape::Shape;
+
+/// Whether two outlines have the same number of contours with the same point counts.
+fn same_structure(a: &[Vec<DVec2>], b: &[Vec<DVec2>]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.len() == y.len())
+}
 
 /// The value of one animatable property.
 ///
@@ -18,6 +24,9 @@ pub enum Value {
     Vec2(DVec2),
     /// A colour, linear and premultiplied.
     Color(LinearRgba),
+    /// A node's geometry. Two prepared outlines of the same structure interpolate point by
+    /// point; anything else switches at the end.
+    Shape(Shape),
 }
 
 impl Lerp for Value {
@@ -28,6 +37,17 @@ impl Lerp for Value {
             (Self::Scalar(a), Self::Scalar(b)) => Self::Scalar(a.lerp(b, u)),
             (Self::Vec2(a), Self::Vec2(b)) => Self::Vec2(Lerp::lerp(a, b, u)),
             (Self::Color(a), Self::Color(b)) => Self::Color(a.lerp(b, u)),
+            (
+                Self::Shape(Shape::Outline { contours: a }),
+                Self::Shape(Shape::Outline { contours: b }),
+            ) if same_structure(a, b) => {
+                let contours = a
+                    .iter()
+                    .zip(b)
+                    .map(|(ca, cb)| ca.iter().zip(cb).map(|(p, q)| Lerp::lerp(p, q, u)).collect())
+                    .collect();
+                Self::Shape(Shape::Outline { contours })
+            }
             _ if u >= 1.0 => other.clone(),
             _ => self.clone(),
         }

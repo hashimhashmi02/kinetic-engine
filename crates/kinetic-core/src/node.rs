@@ -26,6 +26,8 @@ pub enum PropertyId {
     Opacity,
     /// Fill colour. A `Color`.
     Fill,
+    /// The node's geometry. A `Shape`; changing it morphs one shape into another.
+    Shape,
 }
 
 /// Every animatable property of a node, resolved to a value.
@@ -51,15 +53,17 @@ impl Default for Props {
 }
 
 impl Props {
-    /// The current value of one property.
-    pub fn get(&self, property: PropertyId) -> Value {
-        match property {
+    /// The current value of one property. The shape is not part of `Props`; see
+    /// [`NodeDef::get`].
+    pub fn get(&self, property: PropertyId) -> Option<Value> {
+        Some(match property {
             PropertyId::Position => Value::Vec2(self.position),
             PropertyId::Scale => Value::Vec2(self.scale),
             PropertyId::Rotation => Value::Scalar(self.rotation),
             PropertyId::Opacity => Value::Scalar(self.opacity),
             PropertyId::Fill => Value::Color(self.fill),
-        }
+            PropertyId::Shape => return None,
+        })
     }
 
     /// Sets one property. A value of the wrong kind for the property is ignored.
@@ -80,6 +84,16 @@ impl Props {
 pub struct NodeDef {
     pub shape: Shape,
     pub initial: Props,
+}
+
+impl NodeDef {
+    /// The starting value of any property, the shape included.
+    pub fn get(&self, property: PropertyId) -> Value {
+        match self.initial.get(property) {
+            Some(value) => value,
+            None => Value::Shape(self.shape.clone()),
+        }
+    }
 }
 
 /// Something that can be added to a scene.
@@ -253,7 +267,7 @@ mod tests {
         ];
         for (property, value) in values {
             props.set(property, value.clone());
-            assert_eq!(props.get(property), value, "{property:?}");
+            assert_eq!(props.get(property), Some(value), "{property:?}");
         }
     }
 

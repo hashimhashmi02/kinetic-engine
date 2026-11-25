@@ -108,6 +108,8 @@ fn magnitude(v: &Value) -> f64 {
         Value::Scalar(x) => x.abs(),
         Value::Vec2(x) => x.length(),
         Value::Color(c) => c.to_array().iter().map(|x| f64::from(x.abs())).fold(0.0, f64::max),
+        // These scenes never change shape.
+        Value::Shape(_) => 0.0,
     }
 }
 

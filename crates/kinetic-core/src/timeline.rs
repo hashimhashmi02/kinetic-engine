@@ -4,8 +4,9 @@ use glam::DVec2;
 use serde::{Deserialize, Serialize};
 
 use crate::color::LinearRgba;
-use crate::node::{NodeDef, NodeId, Props, Shape};
+use crate::node::{NodeDef, NodeId, PropertyId, Props, Shape};
 use crate::track::Track;
+use crate::value::Value;
 
 /// Everything a scene does, as data. Built once by running scene code; after that, any
 /// frame is a pure function of time via [`Timeline::evaluate`].
@@ -29,6 +30,16 @@ pub struct NodeState {
     pub id: NodeId,
     pub shape: Shape,
     pub props: Props,
+}
+
+impl NodeState {
+    /// Sets one property, the shape included. A value of the wrong kind is ignored.
+    pub fn set(&mut self, property: PropertyId, value: Value) {
+        match (property, value) {
+            (PropertyId::Shape, Value::Shape(shape)) => self.shape = shape,
+            (property, value) => self.props.set(property, value),
+        }
+    }
 }
 
 /// The whole scene at one moment: what the renderer draws.
@@ -59,7 +70,7 @@ impl Timeline {
             .collect();
         for track in &self.tracks {
             if let Some(node) = nodes.get_mut(track.node.0 as usize) {
-                node.props.set(track.property, track.value_at(t));
+                node.set(track.property, track.value_at(t));
             }
         }
         FrameState { time: t, size: self.size, background: self.background, nodes }
