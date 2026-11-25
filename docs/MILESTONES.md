@@ -63,7 +63,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Subpath pairing; grow from / shrink to point
 - [x] `morph_to` action with prepared pairs stored at build time
 - [x] Mesh cache keyed by geometry hash
-- [ ] Goldens: circle to rect, star to blob, ring to disc at t = 0, 0.25, 0.5, 0.75, 1
+- [x] Goldens: circle to rect, star to blob, ring to disc at t = 0, 0.25, 0.5, 0.75, 1
 - [ ] `scenes/morph` example
 
 ## M5 — Text (`v0.5.0`)
