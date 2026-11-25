@@ -31,6 +31,9 @@ pub enum Shape {
     Line { from: DVec2, to: DVec2 },
     /// Any path.
     Path(PathData),
+    /// Closed polygons, one per contour. Morphing produces these: two outlines with the
+    /// same number of contours and points interpolate point by point.
+    Outline { contours: Vec<Vec<DVec2>> },
 }
 
 impl Shape {
@@ -53,6 +56,14 @@ impl Shape {
             }
             Self::Line { from, to } => PathData::new().move_to(*from).line_to(*to),
             Self::Path(path) => path.clone(),
+            Self::Outline { contours } => {
+                contours.iter().fold(PathData::new(), |path, contour| match contour.split_first() {
+                    Some((first, rest)) => {
+                        rest.iter().fold(path.move_to(*first), |p, q| p.line_to(*q)).close()
+                    }
+                    None => path,
+                })
+            }
         }
     }
 }
@@ -190,5 +201,15 @@ mod tests {
         let cw = [(0.0, 0.0), (0.0, 1.0), (1.0, 0.0)].map(DVec2::from);
         assert_eq!(signed_area(&ccw), 0.5);
         assert_eq!(signed_area(&cw), -0.5);
+    }
+
+    #[test]
+    fn outline_lowers_to_closed_polygons() {
+        let tri = vec![DVec2::ZERO, DVec2::X, DVec2::Y];
+        let outline = Shape::Outline { contours: vec![tri.clone(), vec![]] };
+        let contours = outline.to_path().flatten(0.1);
+        assert_eq!(contours.len(), 1);
+        assert_eq!(contours[0].points, tri);
+        assert!(contours[0].closed);
     }
 }
