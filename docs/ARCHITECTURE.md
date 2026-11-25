@@ -95,13 +95,17 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 ## Vectors and morphing
 
-- `PathData` wraps `kurbo::BezPath`. Shapes (`Circle`, `Rect`, `Polygon`, `Star`, `Line`, custom) all lower to a path.
-- **Morph** between paths A and B:
-  1. Split into subpaths. Pair subpaths greedily by centroid distance and area. Unpaired subpaths morph to or from a point at the centroid of their nearest partner.
-  2. For each pair, flatten to a polyline by arc length and resample both to N points (N from the longer perimeter, clamped).
-  3. Make winding equal. Rotate B's start index to minimise the sum of squared point distances.
-  4. Interpolate point-wise. Open and closed paths are handled by treating an open path as a closed one walked out and back.
-- The prepared (resampled, aligned) pair is computed at build time and stored in the segment, so evaluation is a lerp.
+- `PathData` (move, line, quad, cubic, close) lives in `kinetic-core`, so scenes and morphs need no geometry crate; `kinetic-vector` converts it to `kurbo::BezPath` for tessellation. Shapes (`Circle`, `Rect`, `RoundedRect`, `Polygon`, `Star`, `Line`, `PathShape`) all lower to a path. Every closed built-in shape winds counter-clockwise and starts at its top.
+- **The shape is a property.** `PropertyId::Shape` carries a `Value::Shape`, so a morph is an ordinary segment on an ordinary track: interrupting, chaining, easing and springs work as for any other property.
+- **Morph** between shapes A and B, done once in `Track::push` (`kinetic_core::morph::prepare`):
+  1. Flatten each shape to contours (Wang's formula, fixed tolerance). An open contour is walked out and back so it can be treated as closed. Contours of zero length are dropped.
+  2. Pair contours largest first by a cost of centroid distance plus size difference, preferring partners of the same winding. An unpaired contour grows from, or shrinks to, a point at its own centroid, so a hole closes where it is.
+  3. Resample each pair by arc length to the same point count (from the longer perimeter, every 2 units, clamped to 32..1024).
+  4. Make the winding equal, then rotate B's start index to minimise the sum of squared distances.
+  5. Store both as `Shape::Outline` of the same structure. Evaluating is a point-wise lerp, which also extrapolates for springs that overshoot.
+- **Strokes.** Outline colour, width, cap, join and `trim` are node properties. lyon tessellates strokes with a miter limit of 4. The width grows with the node's scale by `sqrt(|sx * sy|)`. Fill is drawn first, outline on top; a `Line` has no fill.
+- **Trim** cuts the transformed path to `[start, end]` of its total arc length, subpaths in order, cutting curves exactly with kurbo's `inv_arclen`. Whole subpaths inside the range stay closed.
+- **Mesh cache.** `MeshCache` (in `kinetic-render`) keys each fill or outline mesh by a hash of shape, scale, rotation, stroke style, trim and tolerance, confirms hits by comparing the full key, and drops meshes the last frame did not use. A node that only moves, fades or changes colour is not re-tessellated. Output is identical to `Frame::from_state`.
 
 ## Text
 
@@ -149,6 +153,13 @@ Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its
 ## Decisions
 
 Record choices here as they are made, newest first, one line each with the reason.
+
+- The mesh cache confirms every hash hit by comparing the full geometry, so a 64-bit collision costs a re-tessellation, never a wrong frame. It keeps only the last frame's meshes, which bounds memory while scrubbing.
+- `trim` applies to the outline only, not the fill; a trimmed fill has no clear meaning for closed shapes and draw-on effects are drawn with outlines.
+- Outline width scales with `sqrt(|sx * sy|)` of the node's scale: uniform scale behaves as expected and a squashed node keeps an even-looking outline instead of a stretched one.
+- An unpaired contour in a morph grows from or shrinks to its own centroid, not its nearest partner's, so a ring's hole closes in place.
+- Morphs are prepared when the segment is pushed and stored as two outlines of the same structure, so evaluating a frame is a lerp and the prepared data travels in the wire format to the editor.
+- `PathData` is a core type rather than a wrapper around `kurbo::BezPath`, keeping `kinetic-core` free of geometry crates; vector converts it.
 
 - The preview window presents through DX12 on Windows unless `WGPU_BACKEND` says otherwise. It was changed while chasing a whole-screen flicker that later turned out to come from the machine's graphics, not the preview; DX12 stays as the Windows default because it is the native path.
 - The preview window opens at 70% of the screen, 16:9 and centred. A fixed 1280x720 logical size filled a 150%-scaled 1920x1080 laptop screen and hid the title bar.
