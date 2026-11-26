@@ -5,5 +5,7 @@
 //! bundled; other fonts can be added from bytes compiled into a scene.
 
 mod font;
+mod layout;
 
 pub use font::{Font, FontBook, FontError, Weight};
+pub use layout::{layout, Align, Layout, PlacedGlyph, TextStyle};
