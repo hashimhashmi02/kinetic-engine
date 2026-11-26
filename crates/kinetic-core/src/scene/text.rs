@@ -1,13 +1,13 @@
 //! Text in a scene: a group of glyph nodes that can be animated together.
 
-use glam::DVec2;
-
 use std::marker::PhantomData;
+
+use glam::DVec2;
 
 use super::{Action, Change, Handle, Scene};
 use crate::color::LinearRgba;
 use crate::node::{NodeDef, NodeId, PropertyId, Props};
-use crate::text::Text;
+use crate::text::{Text, TextStyle};
 use crate::value::Value;
 
 /// The kind of node a glyph of a text is, for [`Handle<Glyph>`](super::Handle).
@@ -26,6 +26,8 @@ pub(crate) enum TextEdit {
     Set(PropertyId, Value),
     /// Move the anchor, and every glyph with it.
     Move(DVec2),
+    /// Set new text in the same style.
+    Retext(String),
 }
 
 /// What the scene knows about a text while it is being built. Edits are applied in the
@@ -35,6 +37,7 @@ pub(crate) struct TextState {
     /// The glyph nodes now showing the text, in order, with their offsets from the anchor.
     pub glyphs: Vec<(NodeId, DVec2)>,
     pub anchor: DVec2,
+    pub style: TextStyle,
     /// The text's properties, used for glyphs added later.
     pub props: Props,
 }
@@ -68,6 +71,17 @@ impl TextHandle {
     pub fn move_to(&self, position: impl Into<DVec2>) -> Action {
         self.edit(TextEdit::Move(position.into()))
     }
+
+    /// Changes the text to `text`, set in the same style at the same anchor.
+    ///
+    /// Glyphs are matched in reading order: each glyph morphs into the new glyph at its
+    /// place and slides to where that glyph sits. Glyphs left over when the new text is
+    /// shorter shrink to a point on their baseline; glyphs the new text needs beyond the old
+    /// ones are added as new nodes (drawn above what is already there) that grow from a
+    /// point on their baseline. Afterwards [`Scene::glyphs`] lists the new text's glyphs.
+    pub fn text_to(&self, text: impl Into<String>) -> Action {
+        self.edit(TextEdit::Retext(text.into()))
+    }
 }
 
 impl Scene {
@@ -86,7 +100,7 @@ impl Scene {
                 (node, glyph.offset)
             })
             .collect();
-        self.texts.push(TextState { glyphs, anchor, props: text.props });
+        self.texts.push(TextState { glyphs, anchor, style: text.style, props: text.props });
         handle
     }
 
@@ -134,6 +148,39 @@ impl Scene {
                     target: Value::Vec2(to + offset),
                 };
                 state.glyphs.iter().map(set).collect()
+            }
+            TextEdit::Retext(text) => {
+                let (anchor, props) = (state.anchor, state.props);
+                let shapes = Text { text, style: state.style.clone(), props }.glyphs();
+                let old = std::mem::take(&mut state.glyphs);
+                let mut changes = Vec::new();
+                let set = |node, property, target| Change::Set { node, property, target };
+                for (k, glyph) in shapes.into_iter().enumerate() {
+                    let position = Value::Vec2(anchor + glyph.offset);
+                    let node = match old.get(k) {
+                        Some(&(node, _)) => {
+                            changes.push(set(node, PropertyId::Shape, Value::Shape(glyph.shape)));
+                            changes.push(set(node, PropertyId::Position, position));
+                            node
+                        }
+                        None => {
+                            let node = NodeId(self.nodes.len() as u32);
+                            let initial = Props {
+                                position: anchor + glyph.offset,
+                                scale: DVec2::ZERO,
+                                ..props
+                            };
+                            self.nodes.push(NodeDef { shape: glyph.shape, initial });
+                            changes.push(set(node, PropertyId::Scale, Value::Vec2(props.scale)));
+                            node
+                        }
+                    };
+                    state.glyphs.push((node, glyph.offset));
+                }
+                for &(node, _) in old.iter().skip(state.glyphs.len()) {
+                    changes.push(set(node, PropertyId::Scale, Value::Vec2(DVec2::ZERO)));
+                }
+                changes
             }
         };
         Action { changes }
@@ -255,5 +302,109 @@ mod tests {
         other.add_text(Text::new("a"));
         let foreign = other.add_text(Text::new("b"));
         assert!(Scene::new().glyphs(foreign).is_empty());
+    }
+
+    fn area(shape: &Shape) -> f64 {
+        let contours = match shape {
+            Shape::Outline { contours } => contours.clone(),
+            other => other.to_path().flatten(0.05).into_iter().map(|c| c.points).collect(),
+        };
+        contours.iter().map(|c| crate::shape::signed_area(c)).sum::<f64>().abs()
+    }
+
+    fn areas(text: &str) -> Vec<f64> {
+        Text::new(text).glyphs().iter().map(|g| area(&g.shape)).collect()
+    }
+
+    #[test]
+    fn equal_length_texts_morph_glyph_for_glyph() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hello").at((0.0, 40.0)));
+        s.play(word.text_to("World"), (1.0, Ease::Linear));
+        assert_eq!(s.glyphs(word).len(), 5);
+        let tl = s.build();
+        assert_eq!(tl.nodes.len(), 5);
+        let end = tl.evaluate(1.0);
+        let world = Text::new("World").glyphs();
+        for ((node, glyph), want) in end.nodes.iter().zip(&world).zip(areas("World")) {
+            assert_eq!(node.props.position, DVec2::new(0.0, 40.0) + glyph.offset);
+            assert!((area(&node.shape) - want).abs() < want * 0.02);
+        }
+        // Half way, every glyph is an outline part way between its two letters.
+        let mid = tl.evaluate(0.5);
+        assert!(mid.nodes.iter().all(|n| matches!(n.shape, Shape::Outline { .. })));
+    }
+
+    #[test]
+    fn a_longer_text_grows_new_glyphs_from_the_baseline() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hi"));
+        s.wait(1.0);
+        s.play(word.text_to("World"), (1.0, Ease::Linear));
+        assert_eq!(s.glyphs(word).len(), 5);
+        let tl = s.build();
+        assert_eq!(tl.nodes.len(), 5);
+        let world = Text::new("World").glyphs();
+        for t in [0.0, 1.0] {
+            let before = tl.evaluate(t);
+            assert!(
+                before.nodes[2..].iter().all(|n| n.props.scale == DVec2::ZERO),
+                "hidden at {t}"
+            );
+        }
+        let mid = tl.evaluate(1.5);
+        assert!(mid.nodes[2..].iter().all(|n| n.props.scale == DVec2::splat(0.5)));
+        for (node, glyph) in mid.nodes[2..].iter().zip(&world[2..]) {
+            assert_eq!(node.props.position, glyph.offset, "grows in place on its baseline");
+        }
+        assert!(tl.evaluate(2.0).nodes.iter().all(|n| n.props.scale == DVec2::ONE));
+    }
+
+    #[test]
+    fn a_shorter_text_shrinks_the_leftovers_to_their_baseline() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hello"));
+        s.play(word.text_to("Hi"), (1.0, Ease::Linear));
+        assert_eq!(s.glyphs(word).len(), 2);
+        let end = s.build().evaluate(1.0);
+        assert_eq!(end.nodes.len(), 5);
+        assert!(end.nodes[..2].iter().all(|n| n.props.scale == DVec2::ONE));
+        assert!(end.nodes[2..].iter().all(|n| n.props.scale == DVec2::ZERO));
+        let hello = Text::new("Hello").glyphs();
+        for (node, glyph) in end.nodes[2..].iter().zip(&hello[2..]) {
+            assert_eq!(node.props.position, glyph.offset, "shrinks where it stood");
+        }
+    }
+
+    #[test]
+    fn later_edits_follow_the_new_text() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hello"));
+        s.play(word.text_to("Hi"), 0.5);
+        s.play(word.fill_to(palette::red()), 0.5);
+        s.play(word.text_to("Hey"), 0.5);
+        s.play(word.move_to((10.0, 0.0)), 0.5);
+        let glyphs = s.glyphs(word);
+        let tl = s.build();
+        // Hello's five nodes, then one new node for the y of Hey.
+        assert_eq!(tl.nodes.len(), 6);
+        assert_eq!(glyphs.iter().map(|g| g.id().0).collect::<Vec<_>>(), [0, 1, 5]);
+        let end = tl.evaluate(tl.duration);
+        assert_eq!(end.nodes[5].props.fill, palette::red(), "new glyphs take the text's fill");
+        let hey = Text::new("Hey").glyphs();
+        assert_eq!(end.nodes[5].props.position, DVec2::new(10.0, 0.0) + hey[2].offset);
+        assert_eq!(end.nodes[3].props.position, Text::new("Hello").glyphs()[3].offset);
+    }
+
+    #[test]
+    fn latin_morphs_into_devanagari() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hello").size(100.0));
+        s.play(word.text_to("नमस्ते"), 1.0);
+        let n = Text::new("नमस्ते").size(100.0).glyphs().len();
+        assert_eq!(s.glyphs(word).len(), n);
+        let tl = s.build();
+        assert_eq!(tl.evaluate(0.5), tl.evaluate(0.5));
+        assert_eq!(tl.nodes.len(), n.max(5));
     }
 }
