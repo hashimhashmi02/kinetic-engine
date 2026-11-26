@@ -3,11 +3,12 @@
 ## Crates
 
 ```
-kinetic-core      scene graph, properties, timeline, easing, springs     (pure)
+kinetic-core      scene graph, properties, timeline, easing, springs,
+                  paths and morphs, text shaping with a bundled font     (pure)
    ^
 kinetic-vector    kurbo paths, lyon tessellation, resampling, morph
    ^
-kinetic-text      cosmic-text shaping, glyph outlines to paths
+kinetic-text      empty for now: shaping moved into core (see Decisions)
 
 kinetic-render    wgpu renderer, MSAA, post stack        (core, vector, text)
 kinetic-export    offscreen frames to ffmpeg             (render)
@@ -109,9 +110,12 @@ Settle time is the smallest `t` after which the envelope `e^(-z w0 t)` (or the s
 
 ## Text
 
-- cosmic-text shapes and lays out with a bundled font (deterministic across machines). System fonts are opt-in.
-- Each glyph outline is converted to a kurbo path and positioned. A text node is therefore a group of paths and renders through the vector pipeline.
-- `text_to` morphs glyph-to-glyph in order; surplus glyphs grow from or shrink to a point on the baseline.
+- **Fonts.** `kinetic_core::text` bundles Poppins Regular and Bold (SIL OFL 1.1, `crates/kinetic-core/fonts`). A `Font` is `'static` bytes plus a face index, so a scene can bring its own with `include_bytes!`; `FontBook` picks a face by family and closest weight. No font is ever read from disk, so every machine sets the same glyphs.
+- **Shaping and layout.** rustybuzz shapes each line (kerning, ligatures, Devanagari conjuncts and marks). Lines break only at `\n`. Each line box is `line_height * size` tall with the font's ascent and descent centred in it; the block of line boxes is centred on the anchor and each line is aligned left, centre or right of it. Letter spacing goes after every glyph that advances the pen. Mixed-direction runs on one line are not reordered.
+- **Glyphs as nodes.** `Scene::add_text` adds one `Shape::Path` node per glyph that draws something (spaces are skipped). Each glyph's path is drawn about its pivot, the middle of its advance on the baseline, so glyphs scale and turn about their own foot and stay on the line. A text is therefore a group of path nodes and renders through the vector pipeline like any shape.
+- **Text as a group.** A `TextHandle` describes changes to all of a text's glyphs: `fade_to`, `fill_to`, `stroke_to`, `stroke_width_to`, `move_to` (glyphs keep their offsets from the anchor) and `text_to`. These are resolved into per-glyph changes when the action is scheduled, against the text's state at that point of the build. `Scene::glyphs` hands out `Handle<Glyph>`s for animating glyphs one by one.
+- **`text_to`.** The new text is shaped in the same style at the current anchor and matched glyph for glyph in reading order: each matched glyph morphs into its new glyph (prepared like any morph) and slides to its new place. Leftover old glyphs shrink to scale 0 about their baseline pivot. Extra new glyphs become new nodes, created at scale 0 and drawn above everything added earlier, that grow to full size. Afterwards the text's glyph list is the new one.
+- **Quality.** `kinetic-render/tests/text_quality.rs` compares rendered glyphs with an exact-coverage rasteriser at 1x and 2x: ink matches within 1% and edge pixels are off by about 0.08 on average, the limit of 4x MSAA's five coverage levels.
 
 ## Renderer
 
@@ -154,6 +158,10 @@ Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- `text_to` adds a node for each glyph the new text needs beyond the old ones instead of reserving nodes up front; the node count of a scene is only known once it is built, and new glyphs drawing above earlier nodes is acceptable for text.
+- A text is a group of glyph nodes, not one node with a combined path, so glyphs can be staggered; group scale and rotation wait for real groups (M8), and a text-level move is applied as per-glyph moves.
+- Glyphs pivot at the middle of their advance on the baseline: a row of glyphs scaled or turned one by one stays on its line, and `text_to` grows and shrinks glyphs at a point on the baseline as planned.
+- One `Action` can carry several changes (`Action::all`), so groups play, run in parallel and stagger as one step.
 - Text is shaped in `kinetic-core` with rustybuzz and a bundled font, not in `kinetic-text` with cosmic-text. Scenes depend on core only and text has to be shaped while the scene builds (per-glyph nodes, morphs prepared at build time); rustybuzz is pure computation, while cosmic-text keeps a stateful font system and pulls in file and memory-map IO. Fonts are `'static` bytes, so scenes bundle their own with `include_bytes!`.
 - The bundled font is Poppins Regular and Bold (SIL OFL 1.1): geometric, good for motion, and it covers Devanagari as well as Latin.
 - The mesh cache confirms every hash hit by comparing the full geometry, so a 64-bit collision costs a re-tessellation, never a wrong frame. It keeps only the last frame's meshes, which bounds memory while scrubbing.
