@@ -29,9 +29,9 @@ fn scene(s: &mut Scene) {
 
 | Crate | Role |
 |---|---|
-| `kinetic-core` | Scene graph, properties, timeline, easing, springs |
+| `kinetic-core` | Scene graph, properties, timeline, easing, springs, morphs, text shaping |
 | `kinetic-vector` | Paths, tessellation, morphing |
-| `kinetic-text` | Shaping, glyphs as paths |
+| `kinetic-text` | Reserved; text shaping lives in `kinetic-core` |
 | `kinetic-render` | wgpu renderer and post-processing |
 | `kinetic-export` | Frames to ffmpeg |
 | `kinetic-reload` | Builds, loads and hot reloads scene crates |
@@ -56,7 +56,7 @@ cargo run -p kinetic-cli -- new scenes/my-scene
 cargo run -p kinetic-cli -- preview scenes/my-scene
 ```
 
-The examples live in `scenes/`: `hello` shows easings, a spring and a stagger; `morph` draws outlines on with `trim`, morphs a circle into a square, a kite and a star, and closes a ring into a disc.
+The examples live in `scenes/`: `hello` shows easings, a spring and a stagger; `morph` draws outlines on with `trim`, morphs a circle into a square, a kite and a star, and closes a ring into a disc; `text` pops letters in one by one and turns Hello into World and then नमस्ते.
 
 ```rust
 s.play(hero.trim_to(0.0, 1.0), (1.2, Ease::InOutCubic));           // draw the outline on
@@ -68,3 +68,5 @@ Timings are written as seconds (`0.6`), seconds with an easing (`(0.6, Ease::Out
 ## License
 
 Licensed under either of [Apache License 2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT) at your option.
+
+The bundled Poppins font is © The Poppins Project Authors and licensed under the [SIL Open Font License 1.1](crates/kinetic-core/fonts/OFL.txt).
