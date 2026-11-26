@@ -32,9 +32,10 @@ pub use node::{
 };
 pub use path::{Contour, PathData, PathEl};
 pub use scene::{Action, Handle, Scene, Timing};
+pub use scene::{Glyph, TextHandle};
 pub use shape::Shape;
 pub use spring::{spring, Spring};
-pub use text::{Font, FontBook, Weight};
+pub use text::{Align, Font, FontBook, Text, Weight};
 pub use timeline::{FrameState, NodeState, Timeline};
 pub use track::{Curve, Segment, Track};
 pub use value::Value;

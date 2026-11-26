@@ -25,6 +25,11 @@ use crate::timeline::Timeline;
 use crate::track::{Curve, Track};
 use crate::value::Value;
 
+mod text;
+
+pub use text::{Glyph, TextHandle};
+use text::{TextEdit, TextState};
+
 /// How long a change takes and how it moves.
 ///
 /// Usually written implicitly: `0.6` (seconds, default easing), `(0.6, Ease::OutBack)`,
@@ -72,6 +77,9 @@ pub struct Action {
 pub(crate) enum Change {
     /// Set one property of one node to a target value.
     Set { node: NodeId, property: PropertyId, target: Value },
+    /// Change a text added with [`Scene::add_text`]; turned into changes to its glyphs
+    /// when scheduled.
+    Text { text: TextHandle, edit: TextEdit },
 }
 
 impl Action {
@@ -144,6 +152,8 @@ pub struct Scene {
     nodes: Vec<NodeDef>,
     /// Sorted by node, then property.
     tracks: Vec<Track>,
+    /// Texts added with `add_text`, indexed by `TextHandle`.
+    texts: Vec<TextState>,
     cursor: f64,
     end: f64,
 }
@@ -162,6 +172,7 @@ impl Scene {
             background: palette::ink(),
             nodes: Vec::new(),
             tracks: Vec::new(),
+            texts: Vec::new(),
             cursor: 0.0,
             end: 0.0,
         }
@@ -213,6 +224,10 @@ impl Scene {
                         track.push(start, duration, target, timing.curve);
                         self.end = self.end.max(end);
                     }
+                }
+                Change::Text { text, edit } => {
+                    let glyph_changes = self.edit_text(text, edit);
+                    self.schedule(glyph_changes, start, timing);
                 }
             }
         }
