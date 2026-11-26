@@ -71,7 +71,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] Bundled font (OFL) and font database
 - [x] Shaping and layout via rustybuzz; alignment, size, line height
 - [x] Glyph outlines to paths; text node as path group
-- [ ] Per-glyph handles for stagger animations
+- [x] Per-glyph handles for stagger animations
 - [ ] `text_to` glyph morph with surplus glyph handling
 - [ ] AA quality check at 1x and 2x against a reference rasteriser
 - [ ] Goldens: static paragraph, "Hello" to "World" midpoints

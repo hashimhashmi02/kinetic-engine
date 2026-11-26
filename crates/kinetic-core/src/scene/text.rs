@@ -2,7 +2,9 @@
 
 use glam::DVec2;
 
-use super::{Action, Change, Scene};
+use std::marker::PhantomData;
+
+use super::{Action, Change, Handle, Scene};
 use crate::color::LinearRgba;
 use crate::node::{NodeDef, NodeId, PropertyId, Props};
 use crate::text::Text;
@@ -86,6 +88,26 @@ impl Scene {
             .collect();
         self.texts.push(TextState { glyphs, anchor, props: text.props });
         handle
+    }
+
+    /// Handles to the glyph nodes now showing `text`, in reading order, for animating glyphs
+    /// one at a time:
+    ///
+    /// ```
+    /// # use kinetic_core::{Ease, Scene, Text};
+    /// let mut s = Scene::new();
+    /// let title = s.add_text(Text::new("Hello").opacity(0.0));
+    /// s.stagger(s.glyphs(title).into_iter().map(|g| g.fade_to(1.0)), (0.4, Ease::OutCubic), 0.05);
+    /// ```
+    ///
+    /// Empty for a text from another scene.
+    pub fn glyphs(&self, text: TextHandle) -> Vec<Handle<Glyph>> {
+        self.texts
+            .get(text.0 as usize)
+            .map(|state| {
+                state.glyphs.iter().map(|&(id, _)| Handle { id, kind: PhantomData }).collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Turns an edit of a whole text into changes to its glyphs, and records it so later
@@ -196,5 +218,42 @@ mod tests {
         assert_eq!(tl, build());
         let back = crate::wire::decode(&crate::wire::encode(&tl).expect("encode")).expect("decode");
         assert_eq!(back, tl);
+    }
+
+    #[test]
+    fn glyphs_stagger_one_by_one() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hello").opacity(0.0));
+        let glyphs = s.glyphs(word);
+        assert_eq!(glyphs.len(), 5);
+        s.stagger(s.glyphs(word).into_iter().map(|g| g.fade_to(1.0)), (0.5, Ease::Linear), 0.1);
+        let tl = s.build();
+        assert!((tl.duration - 0.9).abs() < 1e-12);
+        let opacity = tl.evaluate(0.25).nodes.iter().map(|n| n.props.opacity).collect::<Vec<_>>();
+        let expected = [0.5, 0.3, 0.1, 0.0, 0.0];
+        for (got, want) in opacity.iter().zip(expected) {
+            assert!((got - want).abs() < 1e-9, "{opacity:?}");
+        }
+    }
+
+    #[test]
+    fn a_glyph_turns_and_grows_about_its_baseline() {
+        let mut s = Scene::new();
+        let word = s.add_text(Text::new("Hey"));
+        let e = s.glyphs(word)[1];
+        s.parallel([e.rotate_to(0.3), e.scale_to(2.0)], 1.0);
+        let tl = s.build();
+        let (start, end) = (tl.evaluate(0.0), tl.evaluate(1.0));
+        assert_eq!(start.nodes[1].props.position, end.nodes[1].props.position);
+        assert_eq!(end.nodes[1].props.rotation, 0.3);
+        assert_eq!(end.nodes[0].props, start.nodes[0].props, "the others stay put");
+    }
+
+    #[test]
+    fn a_foreign_text_has_no_glyphs() {
+        let mut other = Scene::new();
+        other.add_text(Text::new("a"));
+        let foreign = other.add_text(Text::new("b"));
+        assert!(Scene::new().glyphs(foreign).is_empty());
     }
 }
