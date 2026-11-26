@@ -75,7 +75,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] `text_to` glyph morph with surplus glyph handling
 - [x] AA quality check at 1x and 2x against a reference rasteriser
 - [x] Goldens: static paragraph, "Hello" to "World" midpoints
-- [ ] `scenes/text` example
+- [x] `scenes/text` example
 
 ## M6 — Export (`v0.6.0`)
 
