@@ -59,13 +59,31 @@ impl From<Spring> for Timing {
     }
 }
 
-/// A requested change: set one property of one node to a target value. Created by
-/// [`Handle`] methods and carried out by [`Scene::play`] and friends.
+/// A requested change, such as moving one node. Created by [`Handle`] methods and carried
+/// out by [`Scene::play`] and friends. One action can carry several changes, which are
+/// all made together; see [`Action::all`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct Action {
-    pub node: NodeId,
-    pub property: PropertyId,
-    pub target: Value,
+    changes: Vec<Change>,
+}
+
+/// One part of an [`Action`].
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Change {
+    /// Set one property of one node to a target value.
+    Set { node: NodeId, property: PropertyId, target: Value },
+}
+
+impl Action {
+    /// Several actions as one: played, they all start together with the same timing. In a
+    /// `stagger` the bundle counts as a single step.
+    pub fn all(actions: impl IntoIterator<Item = Action>) -> Action {
+        Action { changes: actions.into_iter().flat_map(|a| a.changes).collect() }
+    }
+
+    pub(crate) fn set(node: NodeId, property: PropertyId, target: Value) -> Action {
+        Action { changes: vec![Change::Set { node, property, target }] }
+    }
 }
 
 /// A typed reference to a node in a scene. Cheap to copy; its methods describe changes
@@ -102,7 +120,7 @@ impl<N> Handle<N> {
     }
 
     fn action(&self, property: PropertyId, target: Value) -> Action {
-        Action { node: self.id, property, target }
+        Action::set(self.id, property, target)
     }
 
     /// Morphs the node into the shape of `target`; only its geometry is used, not its
@@ -183,14 +201,20 @@ impl Scene {
         self.cursor = end;
     }
 
-    /// Adds `action` to its track starting at `start` and returns when it ends. Actions on
-    /// a node that is not in this scene are ignored.
+    /// Adds each change in `action` to its track starting at `start` and returns when they
+    /// end. Changes to a node that is not in this scene are ignored.
     fn schedule(&mut self, action: Action, start: f64, timing: Timing) -> f64 {
         let duration = timing.duration.max(0.0);
         let end = start + duration;
-        if let Some(track) = self.track_mut(action.node, action.property) {
-            track.push(start, duration, action.target, timing.curve);
-            self.end = self.end.max(end);
+        for change in action.changes {
+            match change {
+                Change::Set { node, property, target } => {
+                    if let Some(track) = self.track_mut(node, property) {
+                        track.push(start, duration, target, timing.curve);
+                        self.end = self.end.max(end);
+                    }
+                }
+            }
         }
         end
     }
@@ -421,7 +445,8 @@ mod tests {
     fn fade_target_is_clamped() {
         let mut s = Scene::new();
         let dot = s.add(Circle::new(10.0));
-        assert_eq!(dot.fade_to(3.0).target, Value::Scalar(1.0));
+        let target = Value::Scalar(1.0);
+        assert_eq!(dot.fade_to(3.0), Action::set(dot.id(), PropertyId::Opacity, target));
         s.play(dot.fade_to(-1.0), 1.0);
         assert_eq!(s.build().evaluate(1.0).nodes[0].props.opacity, 0.0);
     }
@@ -572,5 +597,22 @@ mod tests {
         assert_eq!(mid.trim, DVec2::new(0.0, 0.5));
         assert_eq!(mid.stroke_width, 6.0);
         assert_eq!(tl.evaluate(1.0).nodes[0].props.stroke, palette::red());
+    }
+
+    #[test]
+    fn a_bundle_of_actions_starts_together_and_staggers_as_one() {
+        let mut s = Scene::new();
+        let a = s.add(Circle::new(10.0));
+        let b = s.add(Rect::new(10.0, 10.0));
+        let c = s.add(Circle::new(5.0));
+        let both = Action::all([a.move_to((10.0, 0.0)), b.fade_to(0.0)]);
+        s.stagger([both, c.scale_to(2.0)], (1.0, Ease::Linear), 0.5);
+        assert_eq!(s.time(), 1.5);
+        let tl = s.build();
+        let half = tl.evaluate(0.5);
+        assert_eq!(half.nodes[0].props.position, DVec2::new(5.0, 0.0));
+        assert_eq!(half.nodes[1].props.opacity, 0.5);
+        assert_eq!(half.nodes[2].props.scale, DVec2::ONE, "c starts after one delay");
+        assert_eq!(Action::all([]).changes, vec![]);
     }
 }
