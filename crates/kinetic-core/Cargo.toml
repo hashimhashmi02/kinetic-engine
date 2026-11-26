@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 glam = { version = "0.34.3", features = ["serde"] }
+rustybuzz = "0.20.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip"] }
 

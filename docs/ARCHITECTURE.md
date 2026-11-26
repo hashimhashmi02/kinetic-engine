@@ -154,6 +154,8 @@ Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- Text is shaped in `kinetic-core` with rustybuzz and a bundled font, not in `kinetic-text` with cosmic-text. Scenes depend on core only and text has to be shaped while the scene builds (per-glyph nodes, morphs prepared at build time); rustybuzz is pure computation, while cosmic-text keeps a stateful font system and pulls in file and memory-map IO. Fonts are `'static` bytes, so scenes bundle their own with `include_bytes!`.
+- The bundled font is Poppins Regular and Bold (SIL OFL 1.1): geometric, good for motion, and it covers Devanagari as well as Latin.
 - The mesh cache confirms every hash hit by comparing the full geometry, so a 64-bit collision costs a re-tessellation, never a wrong frame. It keeps only the last frame's meshes, which bounds memory while scrubbing.
 - `trim` applies to the outline only, not the fill; a trimmed fill has no clear meaning for closed shapes and draw-on effects are drawn with outlines.
 - Outline width scales with `sqrt(|sx * sy|)` of the node's scale: uniform scale behaves as expected and a squashed node keeps an even-looking outline instead of a stretched one.
