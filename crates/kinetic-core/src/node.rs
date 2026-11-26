@@ -200,6 +200,8 @@ macro_rules! style_setters {
     };
 }
 
+pub(crate) use style_setters;
+
 /// A circle node.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Circle {

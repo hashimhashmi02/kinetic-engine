@@ -6,6 +6,9 @@
 
 mod font;
 mod layout;
+mod node;
+mod outline;
 
 pub use font::{Font, FontBook, FontError, Weight};
 pub use layout::{layout, Align, Layout, PlacedGlyph, TextStyle};
+pub use node::{GlyphShape, Text};
