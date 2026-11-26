@@ -18,4 +18,5 @@ pollster = "1.0.1"
 wgpu = "30.0.1"
 
 [dev-dependencies]
+ab_glyph_rasterizer = "0.1.10"
 png = "0.18.1"
