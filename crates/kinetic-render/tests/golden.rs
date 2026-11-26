@@ -4,8 +4,8 @@ mod common;
 
 use kinetic_core::color::palette;
 use kinetic_core::{
-    Circle, DVec2, Ease, Line, LineCap, LineJoin, LinearRgba, Node, PathData, PathShape, Polygon,
-    Rect, Scene, Shape, Star,
+    Align, Circle, DVec2, Ease, Line, LineCap, LineJoin, LinearRgba, Node, PathData, PathShape,
+    Polygon, Rect, Scene, Shape, Star, Text,
 };
 use kinetic_render::{render_to_rgba, Frame, Item, Renderer, TARGET_FORMAT};
 use kinetic_vector::{fill, shape};
@@ -143,4 +143,56 @@ fn outlines() {
         let image = render_to_rgba(gpu, &mut renderer, w, h, &frame).expect("render");
         common::assert_golden("outlines", w, h, &image);
     });
+}
+
+/// Renders `items` on the ink background at one scene unit per pixel and checks them.
+fn golden_frame(name: &str, size: DVec2, items: Vec<Item>) {
+    common::with_gpu(|gpu| {
+        let frame = Frame { background: palette::ink(), size, items };
+        let (w, h) = (size.x as u32, size.y as u32);
+        let mut renderer = Renderer::new(&gpu.device, TARGET_FORMAT);
+        let image = render_to_rgba(gpu, &mut renderer, w, h, &frame).expect("render");
+        common::assert_golden(name, w, h, &image);
+    });
+}
+
+#[test]
+fn text_paragraph() {
+    let mut s = Scene::new();
+    let bone = LinearRgba::from_hex(0xe2d6bf);
+    s.add_text(Text::new("Kinetic").bold().size(56.0).align(Align::Left).at((-210.0, 70.0)));
+    s.add_text(
+        Text::new("Motion, written as code.\nEvery frame a function of time.")
+            .size(22.0)
+            .line_height(1.4)
+            .align(Align::Left)
+            .fill(bone)
+            .at((-210.0, -10.0)),
+    );
+    s.add_text(
+        Text::new("नमस्ते, दिल्ली")
+            .size(30.0)
+            .align(Align::Right)
+            .fill(palette::amber())
+            .at((210.0, -90.0)),
+    );
+    let items = Frame::from_state(&s.build().evaluate(0.0), 0.1).items;
+    golden_frame("text_paragraph", DVec2::new(480.0, 270.0), items);
+}
+
+#[test]
+fn text_hello_to_world() {
+    // Hello turns into World; rows show t = 0, 0.25, 0.5, 0.75 and 1, top to bottom.
+    let mut s = Scene::new();
+    let word = s.add_text(Text::new("Hello").bold().size(64.0));
+    s.play(word.text_to("World"), (1.0, Ease::Linear));
+    let timeline = s.build();
+    let mut items = Vec::new();
+    for (k, t) in [0.0, 0.25, 0.5, 0.75, 1.0].into_iter().enumerate() {
+        for mut item in Frame::from_state(&timeline.evaluate(t), 0.1).items {
+            item.offset.y += 160.0 - 80.0 * k as f64;
+            items.push(item);
+        }
+    }
+    golden_frame("text_hello_to_world", DVec2::new(320.0, 420.0), items);
 }
