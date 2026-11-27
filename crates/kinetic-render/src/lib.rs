@@ -17,7 +17,7 @@ use kinetic_vector::Mesh;
 
 pub use cache::MeshCache;
 pub use gpu::{AdapterChoice, Gpu};
-pub use headless::render_to_rgba;
+pub use headless::{padded_row_bytes, render_to_rgba, Offscreen};
 pub use renderer::{Renderer, SAMPLE_COUNT};
 pub use wgpu;
 
@@ -56,6 +56,8 @@ pub enum RenderError {
     Device(String),
     /// Reading the rendered image back from the GPU failed.
     Readback(String),
+    /// The requested image size is empty or too large for the device.
+    Size(String),
 }
 
 impl fmt::Display for RenderError {
@@ -64,6 +66,7 @@ impl fmt::Display for RenderError {
             Self::NoAdapter(why) => write!(f, "no usable graphics adapter: {why}"),
             Self::Device(why) => write!(f, "could not create a graphics device: {why}"),
             Self::Readback(why) => write!(f, "could not read the rendered image back: {why}"),
+            Self::Size(why) => write!(f, "unsupported image size: {why}"),
         }
     }
 }
