@@ -80,7 +80,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 ## M6 — Export (`v0.6.0`)
 
 - [x] Texture readback with row padding handled
-- [ ] Frame iterator: fixed timestep from frame index
+- [x] Frame iterator: fixed timestep from frame index
 - [ ] ffmpeg child process, stdin pipe, error capture
 - [ ] `kinetic render` with `--fps`, `--size`, `--crf`, `--range`
 - [ ] PNG sequence output
