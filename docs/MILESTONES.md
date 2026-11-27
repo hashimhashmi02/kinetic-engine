@@ -86,7 +86,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] PNG sequence output
 - [x] `kinetic doctor` (ffmpeg, GPU adapter, toolchain)
 - [x] Determinism test: frame hashes equal across two runs
-- [ ] Progress bar and ETA
+- [x] Progress bar and ETA
 
 ## M7 — Editor (`v0.7.0`)
 

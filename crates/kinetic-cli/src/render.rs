@@ -1,12 +1,13 @@
 //! `kinetic render`: builds a scene crate and exports it to a video or PNG frames.
 
+use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use kinetic_core::Timeline;
 use kinetic_export::{
-    ffmpeg_program, AdapterChoice, Encoder, Export, ExportError, FrameTime, Frames, Gpu,
-    PngSequence, VideoSettings,
+    ffmpeg_program, progress_line, AdapterChoice, Encoder, Export, ExportError, FrameTime, Frames,
+    Gpu, PngSequence, VideoSettings,
 };
 use kinetic_reload::{load, SceneCrate};
 
@@ -172,7 +173,14 @@ pub fn run(args: &RenderArgs) -> Result<(), String> {
         gpu.adapter_name
     );
     let started = Instant::now();
-    export.run(&gpu, |frame, rgba| sink.write(frame, rgba)).map_err(|e| e.to_string())?;
+    let mut progress = Progress::new(frames.len(), std::io::stderr().is_terminal());
+    let rendered = export.run(&gpu, |frame, rgba| {
+        sink.write(frame, rgba)?;
+        progress.tick();
+        Ok(())
+    });
+    progress.finish();
+    rendered.map_err(|e| e.to_string())?;
     let wrote = sink.finish().map_err(|e| e.to_string())?;
     eprintln!(
         "wrote {wrote}: {} frames ({:.2} s at {} fps) in {:.1} s",
@@ -182,6 +190,45 @@ pub fn run(args: &RenderArgs) -> Result<(), String> {
         started.elapsed().as_secs_f64()
     );
     Ok(())
+}
+
+/// A progress bar on stderr, redrawn in place at most ten times a second. Shown only on a
+/// terminal, so logs and pipes get the start and end lines alone.
+struct Progress {
+    total: u64,
+    done: u64,
+    started: Instant,
+    drawn: Option<Instant>,
+    live: bool,
+}
+
+impl Progress {
+    const EVERY: Duration = Duration::from_millis(100);
+
+    fn new(total: u64, live: bool) -> Self {
+        Self { total, done: 0, started: Instant::now(), drawn: None, live }
+    }
+
+    fn tick(&mut self) {
+        self.done += 1;
+        let now = Instant::now();
+        let due = self.drawn.is_none_or(|at| now - at >= Self::EVERY);
+        if self.live && (due || self.done == self.total) {
+            let line = progress_line(self.done, self.total, now - self.started);
+            let mut err = std::io::stderr().lock();
+            // A progress line that cannot be drawn is not worth stopping the render for.
+            let _ = write!(err, "\r{line}");
+            let _ = err.flush();
+            self.drawn = Some(now);
+        }
+    }
+
+    /// Ends the bar's line, so whatever is printed next starts on its own.
+    fn finish(&self) {
+        if self.drawn.is_some() {
+            eprintln!();
+        }
+    }
 }
 
 /// The open output: a running encoder or a folder of PNG files.
