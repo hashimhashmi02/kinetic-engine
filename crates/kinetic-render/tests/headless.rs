@@ -4,7 +4,9 @@ mod common;
 
 use kinetic_core::color::palette;
 use kinetic_core::{DVec2, LinearRgba};
-use kinetic_render::{render_to_rgba, Frame, Item, Renderer, TARGET_FORMAT};
+use kinetic_render::{
+    render_to_rgba, Frame, Item, Offscreen, RenderError, Renderer, TARGET_FORMAT,
+};
 use kinetic_vector::{fill, shape};
 
 const W: u32 = 256;
@@ -117,17 +119,73 @@ fn rendering_twice_gives_identical_bytes() {
     });
 }
 
+/// White over the top-left `cols` x `rows` pixels of a `w` x `h` image, red elsewhere.
+/// The block's edges fall on pixel boundaries, so every pixel is exactly one colour.
+fn corner_block(w: u32, h: u32, cols: u32, rows: u32) -> Frame {
+    let (w, h, cols, rows) = (f64::from(w), f64::from(h), f64::from(cols), f64::from(rows));
+    Frame {
+        background: palette::red(),
+        size: DVec2::new(w, h),
+        items: vec![Item {
+            mesh: fill(&shape::rect(DVec2::ZERO, DVec2::new(cols, rows)), 0.1).expect("tessellate"),
+            color: palette::WHITE,
+            offset: DVec2::new((cols - w) / 2.0, (h - rows) / 2.0),
+        }],
+    }
+}
+
+fn assert_corner_block(image: &[u8], w: u32, h: u32, cols: u32, rows: u32) {
+    assert_eq!(image.len(), (w * h * 4) as usize, "{w}x{h}");
+    let (white, red) = ([255, 255, 255, 255], palette::red().to_srgba8());
+    for (i, p) in image.as_chunks::<4>().0.iter().enumerate() {
+        let (x, y) = (i as u32 % w, i as u32 / w);
+        let want = if x < cols && y < rows { white } else { red };
+        assert!(close(*p, want), "{w}x{h}: pixel ({x}, {y}) is {p:?}, want {want:?}");
+    }
+}
+
 #[test]
-fn width_that_needs_row_padding_reads_back_cleanly() {
+fn widths_that_need_row_padding_keep_every_pixel_in_place() {
     common::with_gpu(|gpu| {
         let mut renderer = Renderer::new(&gpu.device, TARGET_FORMAT);
-        let frame =
-            Frame { background: palette::red(), size: DVec2::new(30.0, 10.0), items: vec![] };
-        // 30 * 4 = 120 bytes per row, padded to 256 on the GPU side.
-        let image = render_to_rgba(gpu, &mut renderer, 30, 10, &frame).expect("render");
-        assert_eq!(image.len(), 30 * 10 * 4);
-        let want = palette::red().to_srgba8();
-        assert!(image.as_chunks::<4>().0.iter().all(|p| close(*p, want)));
+        // Rows of 4, 252, 256, 260 and 1332 bytes: shorter, equal to and longer than the
+        // 256-byte copy alignment. A row read with the wrong stride shifts the block.
+        for (w, h) in [(1_u32, 3_u32), (63, 9), (64, 8), (65, 7), (333, 21)] {
+            let (cols, rows) = (w.div_ceil(2), h.div_ceil(2));
+            let frame = corner_block(w, h, cols, rows);
+            let image = render_to_rgba(gpu, &mut renderer, w, h, &frame).expect("render");
+            assert_corner_block(&image, w, h, cols, rows);
+        }
+    });
+}
+
+#[test]
+fn an_offscreen_target_renders_frame_after_frame() {
+    common::with_gpu(|gpu| {
+        let mut renderer = Renderer::new(&gpu.device, TARGET_FORMAT);
+        let (w, h) = (101, 37);
+        let target = Offscreen::new(gpu, w, h).expect("target");
+        assert_eq!(target.size(), (w, h));
+        let mut pixels = vec![7; 3];
+        // Each frame replaces the last one completely.
+        for (cols, rows) in [(80, 30), (10, 5), (101, 37), (1, 1)] {
+            target
+                .render(gpu, &mut renderer, &corner_block(w, h, cols, rows), &mut pixels)
+                .expect("render");
+            assert_corner_block(&pixels, w, h, cols, rows);
+        }
+    });
+}
+
+#[test]
+fn an_offscreen_target_refuses_sizes_the_device_cannot_hold() {
+    common::with_gpu(|gpu| {
+        let max = gpu.device.limits().max_texture_dimension_2d;
+        for (w, h) in [(0, 10), (10, 0), (max + 1, 10)] {
+            let error = Offscreen::new(gpu, w, h).expect_err("too large");
+            assert!(matches!(error, RenderError::Size(_)), "{error}");
+            assert!(error.to_string().contains(&max.to_string()), "{error}");
+        }
     });
 }
 
