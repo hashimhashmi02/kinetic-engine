@@ -11,11 +11,12 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
+kinetic-core = { version = "0.0.0", path = "../kinetic-core" }
 kinetic-editor = { version = "0.0.0", path = "../kinetic-editor" }
+kinetic-export = { version = "0.0.0", path = "../kinetic-export" }
+kinetic-reload = { version = "0.0.0", path = "../kinetic-reload" }
 
 [[bin]]
 name = "kinetic"
 path = "src/main.rs"
 
-[dev-dependencies]
-kinetic-reload = { path = "../kinetic-reload" }

@@ -1,6 +1,7 @@
 //! Command line entry point: preview, render, new.
 
 mod new;
+mod render;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -10,6 +11,7 @@ const USAGE: &str = "usage: kinetic <command>
 commands:
   new <scene-dir>       create a scene crate
   preview <scene-dir>   open a scene crate and reload it on every save
+  render <scene-dir>    export a scene crate to a video; see kinetic render --help
   version               print the version";
 
 fn main() -> ExitCode {
@@ -27,6 +29,17 @@ fn main() -> ExitCode {
                 println!("created {}\n\nnext: kinetic preview {dir}", made.display());
                 ExitCode::SUCCESS
             }
+            Err(error) => {
+                eprintln!("kinetic: {error}");
+                ExitCode::FAILURE
+            }
+        },
+        ["render", "--help" | "-h"] => {
+            println!("{}", render::USAGE);
+            ExitCode::SUCCESS
+        }
+        ["render", rest @ ..] => match render::parse(rest).and_then(|args| render::run(&args)) {
+            Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
                 eprintln!("kinetic: {error}");
                 ExitCode::FAILURE
