@@ -73,6 +73,34 @@ fn renders_a_scene_crate_to_a_video() {
 }
 
 #[test]
+fn renders_a_scene_crate_to_png_frames_without_ffmpeg() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("render").join("hello-frames");
+    let _ = std::fs::remove_dir_all(&dir);
+    let scene = hello();
+    let output = Command::new(env!("CARGO_BIN_EXE_kinetic"))
+        .args(["render", &scene.to_string_lossy(), "--frames", &dir.to_string_lossy()])
+        .args(["--size", "161x91", "--fps", "10", "--range", "0.95..1.3"])
+        .env("KINETIC_ADAPTER", "software")
+        // PNG output must not need ffmpeg at all.
+        .env("KINETIC_FFMPEG", "kinetic-no-such-ffmpeg")
+        .output()
+        .expect("run kinetic");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+
+    let mut names: Vec<_> = std::fs::read_dir(&dir)
+        .expect("list frames")
+        .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    // Frames keep their index in the full timeline: 1.0 s at 10 fps is frame 10.
+    assert_eq!(names, ["frame_00010.png", "frame_00011.png", "frame_00012.png", "frame_00013.png"]);
+    let file = std::fs::File::open(dir.join("frame_00010.png")).expect("open frame");
+    let info = png::Decoder::new(std::io::BufReader::new(file)).read_info().expect("png info");
+    assert_eq!((info.info().width, info.info().height), (161, 91), "odd sizes are fine for PNG");
+}
+
+#[test]
 fn bad_settings_fail_before_the_scene_is_built() {
     let scene = hello();
     let output = kinetic(&["render", &scene.to_string_lossy(), "-o", "x.mp4", "--size", "333x200"]);
