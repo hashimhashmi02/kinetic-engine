@@ -15,6 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  KINETIC_REQUIRE_FFMPEG: "1"
 
 jobs:
   check:
@@ -26,9 +27,10 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      # Render tests draw on a software Vulkan adapter (lavapipe), so they need no GPU.
-      - name: Install lavapipe
-        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+      # Render tests draw on a software Vulkan adapter (lavapipe), so they need no GPU;
+      # export tests encode with ffmpeg and must not skip here.
+      - name: Install lavapipe and ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libvulkan1 ffmpeg
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

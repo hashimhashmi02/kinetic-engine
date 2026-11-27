@@ -81,7 +81,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 
 - [x] Texture readback with row padding handled
 - [x] Frame iterator: fixed timestep from frame index
-- [ ] ffmpeg child process, stdin pipe, error capture
+- [x] ffmpeg child process, stdin pipe, error capture
 - [ ] `kinetic render` with `--fps`, `--size`, `--crf`, `--range`
 - [ ] PNG sequence output
 - [ ] `kinetic doctor` (ffmpeg, GPU adapter, toolchain)
