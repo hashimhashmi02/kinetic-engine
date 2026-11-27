@@ -147,6 +147,10 @@ proptest! {
                 // Probe very close: circ easings move like a square root near their ends.
                 let before = track.value_at(seg.start - 1e-12);
                 let at = track.value_at(seg.start);
+                // A real jump keeps its size as the probe closes in; a steep curve's gap
+                // shrinks (a circ ending's like the square root of the probe distance, so
+                // a short circ segment can still be 1e-5 away 1e-12 s before its end).
+                let farther = distance(&track.value_at(seg.start - 1e-9), &at);
                 // A zero-length segment jumps by design, including when another change
                 // starts at the same instant right after it.
                 let jump_here = track.segments.iter().any(|s| s.start == seg.start && s.duration == 0.0);
@@ -154,7 +158,9 @@ proptest! {
                     // Relative to the size of the values: a steep curve on a large value
                     // moves further in the probe interval than the same curve on a small one.
                     let size = 1.0 + magnitude(&before).max(magnitude(&at));
-                    prop_assert!(distance(&before, &at) < 1e-5 * size, "jump of {} at {}", distance(&before, &at), seg.start);
+                    let gap = distance(&before, &at);
+                    let converging = gap < 0.5 * farther;
+                    prop_assert!(gap < 1e-5 * size || converging, "jump of {} at {} (1e-9 s before: {})", gap, seg.start, farther);
                 }
             }
         }
