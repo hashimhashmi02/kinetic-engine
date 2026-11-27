@@ -50,6 +50,8 @@ impl PngSequence {
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
         encoder.set_source_srgb(png::SrgbRenderingIntent::Perceptual);
+        // Frames are working files for an editor or encoder: favour speed over size.
+        encoder.set_compression(png::Compression::Fast);
         let as_io = |e: png::EncodingError| ExportError::io(&path, std::io::Error::other(e));
         let mut writer = encoder.write_header().map_err(as_io)?;
         writer.write_image_data(&self.straight).map_err(as_io)?;
