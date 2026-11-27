@@ -14,6 +14,8 @@ use kinetic_render::RenderError;
 pub use export::Export;
 pub use ffmpeg::{ffmpeg_program, Encoder, VideoSettings};
 pub use frames::{FrameTime, Frames};
+/// The device types an [`Export`] runs on, so callers need not depend on the renderer.
+pub use kinetic_render::{AdapterChoice, Gpu};
 
 /// An export could not run or did not finish.
 #[derive(Debug)]
