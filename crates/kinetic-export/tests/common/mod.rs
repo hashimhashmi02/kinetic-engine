@@ -3,6 +3,8 @@
 // Each test binary uses its own subset of these helpers.
 #![allow(dead_code)]
 
+pub mod determinism;
+
 use std::sync::{Mutex, OnceLock};
 
 use kinetic_render::{AdapterChoice, Gpu};

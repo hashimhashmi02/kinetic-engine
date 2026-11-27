@@ -16,4 +16,7 @@ kinetic-render = { version = "0.0.0", path = "../kinetic-render" }
 png = "0.18.1"
 
 [dev-dependencies]
+hello = { path = "../../scenes/hello" }
+morph = { path = "../../scenes/morph" }
 proptest = "1.12.0"
+text = { path = "../../scenes/text" }
