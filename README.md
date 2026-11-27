@@ -33,14 +33,14 @@ fn scene(s: &mut Scene) {
 | `kinetic-vector` | Paths, tessellation, morphing |
 | `kinetic-text` | Reserved; text shaping lives in `kinetic-core` |
 | `kinetic-render` | wgpu renderer and post-processing |
-| `kinetic-export` | Frames to ffmpeg |
+| `kinetic-export` | Frames to video through ffmpeg, or to PNG files |
 | `kinetic-reload` | Builds, loads and hot reloads scene crates |
 | `kinetic-editor` | Preview, timeline, inspector |
-| `kinetic-cli` | `kinetic new`, `kinetic preview` |
+| `kinetic-cli` | `kinetic new`, `preview`, `render`, `doctor` |
 
 ## Building
 
-Requires stable Rust and, for export, `ffmpeg` on `PATH`.
+Requires stable Rust and, for video export, `ffmpeg` on `PATH`. `kinetic doctor` checks the toolchain, the GPU and ffmpeg.
 
 ```bash
 cargo test --workspace
@@ -62,6 +62,16 @@ The examples live in `scenes/`: `hello` shows easings, a spring and a stagger; `
 s.play(hero.trim_to(0.0, 1.0), (1.2, Ease::InOutCubic));           // draw the outline on
 s.play(hero.morph_to(Star::new(5, 160.0, 66.0)), Spring::WOBBLY);  // any shape into any shape
 ```
+
+Export a scene to video, or to PNG frames without ffmpeg:
+
+```bash
+cargo run -p kinetic-cli -- render scenes/hello -o out/hello.mp4
+cargo run -p kinetic-cli -- render scenes/text -o out/text.mp4 --size 1920x1080 --fps 30 --range 2..5
+cargo run -p kinetic-cli -- render scenes/morph --frames out/morph
+```
+
+Every frame is rendered from its own time, so two renders of a scene are identical byte for byte.
 
 Timings are written as seconds (`0.6`), seconds with an easing (`(0.6, Ease::OutBack)`), seconds with a cubic bezier (`(0.6, CubicBezier::EASE)`), or a spring, which lasts until it settles.
 
