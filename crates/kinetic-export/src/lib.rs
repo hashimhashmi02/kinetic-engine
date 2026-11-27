@@ -6,8 +6,10 @@
 mod export;
 mod ffmpeg;
 mod frames;
+mod sequence;
 
 use std::fmt;
+use std::path::{Path, PathBuf};
 
 use kinetic_render::RenderError;
 
@@ -16,6 +18,7 @@ pub use ffmpeg::{ffmpeg_program, Encoder, VideoSettings};
 pub use frames::{FrameTime, Frames};
 /// The device types an [`Export`] runs on, so callers need not depend on the renderer.
 pub use kinetic_render::{AdapterChoice, Gpu};
+pub use sequence::{unpremultiply, PngSequence};
 
 /// An export could not run or did not finish.
 #[derive(Debug)]
@@ -31,6 +34,19 @@ pub enum ExportError {
     Ffmpeg(String),
     /// Rendering a frame failed.
     Render(RenderError),
+    /// Reading or writing a file failed.
+    Io {
+        /// The file or folder involved.
+        path: PathBuf,
+        /// What went wrong.
+        error: std::io::Error,
+    },
+}
+
+impl ExportError {
+    pub(crate) fn io(path: &Path, error: std::io::Error) -> Self {
+        Self::Io { path: path.to_path_buf(), error }
+    }
 }
 
 impl fmt::Display for ExportError {
@@ -44,6 +60,7 @@ impl fmt::Display for ExportError {
             ),
             Self::Ffmpeg(why) => write!(f, "{why}"),
             Self::Render(error) => write!(f, "{error}"),
+            Self::Io { path, error } => write!(f, "{}: {error}", path.display()),
         }
     }
 }
@@ -52,6 +69,7 @@ impl std::error::Error for ExportError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Render(error) => Some(error),
+            Self::Io { error, .. } => Some(error),
             _ => None,
         }
     }

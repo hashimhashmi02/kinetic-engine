@@ -1285,6 +1285,7 @@ dependencies = [
  "kinetic-editor",
  "kinetic-export",
  "kinetic-reload",
+ "png",
 ]
 
 [[package]]
@@ -1318,6 +1319,7 @@ version = "0.0.0"
 dependencies = [
  "kinetic-core",
  "kinetic-render",
+ "png",
  "proptest",
 ]
 
