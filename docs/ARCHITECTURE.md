@@ -11,10 +11,10 @@ kinetic-vector    kurbo paths, lyon tessellation, resampling, morph
 kinetic-text      empty for now: shaping moved into core (see Decisions)
 
 kinetic-render    wgpu renderer, MSAA, post stack        (core, vector, text)
-kinetic-export    offscreen frames to ffmpeg             (render)
+kinetic-export    offscreen frames to ffmpeg or PNG      (core, render)
 kinetic-reload    cargo builds, scene library loading, file watching   (core)
 kinetic-editor    winit + egui preview                   (render, reload)
-kinetic-cli       preview / render / new / doctor        (editor, export)
+kinetic-cli       preview / render / new / doctor        (editor, export, reload)
 ```
 
 Arrows point from dependent to dependency. No reverse edges.
@@ -139,10 +139,15 @@ Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its
 
 ## Export
 
-- `kinetic render <scene> -o out.mp4 --fps 60 --size 1920x1080`.
-- For each frame `i`: `t = i / fps`, evaluate, render offscreen, read back with row padding removed, write RGBA to ffmpeg's stdin.
-- ffmpeg: `-f rawvideo -pix_fmt rgba -s WxH -r FPS -i - -c:v libx264 -pix_fmt yuv420p -crf 16`.
-- `--frames dir/` writes a PNG sequence instead and needs no ffmpeg.
+- `kinetic render <scene> -o out.mp4 [--fps 60] [--size 1920x1080] [--crf 16] [--range 1.5..4]`, or `--frames <dir>` for PNG files. The CLI builds and loads the scene crate the way the preview does, checks the settings before the build, then renders.
+- **Frames** (`kinetic_export::Frames`). Frame `i` shows `t = i / fps`, computed from the index, never accumulated. A full run goes from `t = 0` to the first frame at or after the end, so the final pose is always rendered. `--range` keeps the indices and times of the full run, so a partial render reproduces the same frames and names them the same.
+- **Rendering** (`Export`). Each frame is evaluated, lowered through the mesh cache (tolerance 0.25 px) and drawn into one `Offscreen` target, allocated once with its readback buffer. Readback rows are padded to wgpu's 256-byte copy alignment and the padding is dropped. The scene's rectangle is fitted inside the image, never stretched.
+- **Video** (`Encoder`). ffmpeg reads raw RGBA8 from stdin: `-f rawvideo -pix_fmt rgba -s WxH -framerate FPS -i pipe:0 -vf scale=out_color_matrix=bt709:out_range=tv,format=yuv420p -c:v libx264 -crf N`, tagged BT.709 limited range, so players show the rendered colours (round trip within 3/255). stderr is drained on its own thread and returned with any failure. `KINETIC_FFMPEG` picks the program.
+- **PNG** (`PngSequence`). `frame_<index>.png`, at least five digits, sRGB-tagged, fast compression. Premultiplied pixels are converted to straight alpha in linear light.
+- **Determinism.** `frame_hash` is FNV-1a over a frame's bytes, stable across platforms and Rust versions. Tests build each example scene twice and require every frame of both renders to hash the same; two `kinetic render --frames` processes write byte-identical files.
+- **Progress.** A bar with the average rate and time left, redrawn on stderr at most ten times a second, only when stderr is a terminal.
+- `kinetic doctor` reports cargo, rustc, the export adapter, the software adapter and ffmpeg (with or without libx264). No ffmpeg is a warning, since PNG export still works; no toolchain or no adapter fails.
+- **Measured** (RTX 3050 laptop): `scenes/text`, 475 frames at 1280x720, renders to MP4 in 3.3 s and to PNG frames in 6.9 s.
 
 ## Testing
 
@@ -158,6 +163,11 @@ Built in M3. A scene is a crate whose library is a `cdylib` (plus `rlib`, so its
 
 Record choices here as they are made, newest first, one line each with the reason.
 
+- A render includes the first frame at or after the timeline's end, so the final pose (a fade to zero, a settled spring) is always in the output; the clip runs up to one frame longer than the timeline.
+- An image whose shape differs from the scene's shows more of the scene around its rectangle instead of stretching it; scenes keep their proportions at any `--size`.
+- `kinetic-cli` depends on `kinetic-reload` directly to build and load scene crates for `render`; it is the top of the graph, so the edge points the usual way.
+- Video is tagged BT.709 limited range and converted with that matrix, because untagged HD video is shown with BT.709 by most players while ffmpeg converts with BT.601 by default.
+- PNG frames store straight alpha, unpremultiplied in linear light, and are named by their index in the full timeline.
 - `text_to` adds a node for each glyph the new text needs beyond the old ones instead of reserving nodes up front; the node count of a scene is only known once it is built, and new glyphs drawing above earlier nodes is acceptable for text.
 - A text is a group of glyph nodes, not one node with a combined path, so glyphs can be staggered; group scale and rotation wait for real groups (M8), and a text-level move is applied as per-glyph moves.
 - Glyphs pivot at the middle of their advance on the baseline: a row of glyphs scaled or turned one by one stays on its line, and `text_to` grows and shrinks glyphs at a point on the baseline as planned.
