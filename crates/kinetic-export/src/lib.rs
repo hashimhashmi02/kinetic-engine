@@ -6,6 +6,7 @@
 mod export;
 mod ffmpeg;
 mod frames;
+mod hash;
 mod sequence;
 
 use std::fmt;
@@ -16,6 +17,7 @@ use kinetic_render::RenderError;
 pub use export::Export;
 pub use ffmpeg::{ffmpeg_program, Encoder, VideoSettings};
 pub use frames::{FrameTime, Frames};
+pub use hash::frame_hash;
 /// The device types an [`Export`] runs on, so callers need not depend on the renderer.
 pub use kinetic_render::{wgpu, AdapterChoice, Gpu};
 pub use sequence::{unpremultiply, PngSequence};
