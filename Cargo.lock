@@ -1314,6 +1314,8 @@ dependencies = [
 name = "kinetic-export"
 version = "0.0.0"
 dependencies = [
+ "kinetic-core",
+ "kinetic-render",
  "proptest",
 ]
 

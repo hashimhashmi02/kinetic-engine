@@ -3,11 +3,15 @@
 //! An export walks a timeline at a fixed frame rate ([`Frames`]); every frame's time comes
 //! from its index, so a render is a pure function of the timeline and the settings.
 
+mod export;
 mod ffmpeg;
 mod frames;
 
 use std::fmt;
 
+use kinetic_render::RenderError;
+
+pub use export::Export;
 pub use ffmpeg::{ffmpeg_program, Encoder, VideoSettings};
 pub use frames::{FrameTime, Frames};
 
@@ -23,6 +27,8 @@ pub enum ExportError {
     },
     /// ffmpeg could not be started, or failed while encoding. Holds what it reported.
     Ffmpeg(String),
+    /// Rendering a frame failed.
+    Render(RenderError),
 }
 
 impl fmt::Display for ExportError {
@@ -35,8 +41,22 @@ impl fmt::Display for ExportError {
                  KINETIC_FFMPEG to its path, or write PNG frames instead"
             ),
             Self::Ffmpeg(why) => write!(f, "{why}"),
+            Self::Render(error) => write!(f, "{error}"),
         }
     }
 }
 
-impl std::error::Error for ExportError {}
+impl std::error::Error for ExportError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Render(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl From<RenderError> for ExportError {
+    fn from(error: RenderError) -> Self {
+        Self::Render(error)
+    }
+}
