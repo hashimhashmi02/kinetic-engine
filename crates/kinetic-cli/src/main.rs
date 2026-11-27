@@ -1,5 +1,6 @@
-//! Command line entry point: preview, render, new.
+//! Command line entry point: preview, render, new, doctor.
 
+mod doctor;
 mod new;
 mod render;
 
@@ -9,6 +10,7 @@ use std::process::ExitCode;
 const USAGE: &str = "usage: kinetic <command>
 
 commands:
+  doctor                check ffmpeg, the GPU and the Rust toolchain
   new <scene-dir>       create a scene crate
   preview <scene-dir>   open a scene crate and reload it on every save
   render <scene-dir>    export a scene crate to a video; see kinetic render --help
@@ -48,6 +50,15 @@ fn main() -> ExitCode {
         ["preview"] => {
             eprintln!("kinetic: preview needs a scene directory, for example: kinetic preview scenes/hello");
             ExitCode::FAILURE
+        }
+        ["doctor"] => {
+            let (text, healthy) = doctor::report(&doctor::checks());
+            println!("{text}");
+            if healthy {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
         }
         ["version" | "--version" | "-V"] => {
             println!("kinetic {}", env!("CARGO_PKG_VERSION"));
