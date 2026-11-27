@@ -273,7 +273,7 @@ impl Sink {
                 encoder.finish()?;
                 Ok(path.display().to_string())
             }
-            Self::Frames(_, dir) => Ok(format!("{}{}", dir.display(), std::path::MAIN_SEPARATOR)),
+            Self::Frames(_, dir) => Ok(dir.display().to_string()),
         }
     }
 }
