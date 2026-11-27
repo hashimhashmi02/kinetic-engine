@@ -84,7 +84,7 @@ A milestone is done when every box is ticked, `verify` passes, and the tag is pu
 - [x] ffmpeg child process, stdin pipe, error capture
 - [x] `kinetic render` with `--fps`, `--size`, `--crf`, `--range`
 - [x] PNG sequence output
-- [ ] `kinetic doctor` (ffmpeg, GPU adapter, toolchain)
+- [x] `kinetic doctor` (ffmpeg, GPU adapter, toolchain)
 - [ ] Determinism test: frame hashes equal across two runs
 - [ ] Progress bar and ETA
 
